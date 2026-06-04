@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0a0a0b">
 <title>Nutrition</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="sync.js" defer></script>
 <script src="topbar.js" defer></script>
 <style>
 :root {
@@ -704,7 +706,27 @@ html, body {
   })();
 
   render();
+
+  // Expose a soft refresh so the sync helper can update in-memory state
+  // without wiping the chat history.
+  window.__foodSyncApplied = function () {
+    log   = loadLog();
+    goals = loadGoals();
+    render();
+  };
 })();
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  if (typeof initCloudSync !== 'function') return;
+  initCloudSync({
+    appKey: 'food',
+    syncedKeys: ['food_log_v1', 'food_goals_v1', 'food_history_v1'],
+    onApplied: function () {
+      if (typeof window.__foodSyncApplied === 'function') window.__foodSyncApplied();
+    }
+  });
+});
 </script>
 </body>
 </html>
