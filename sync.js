@@ -170,7 +170,8 @@
       if (!document.hidden) pullNow();
     });
     window.addEventListener('focus', pullNow);
-    // Poll every 30 s as a guaranteed fallback when real-time isn't enabled.
-    setInterval(() => { if (!document.hidden) pullNow(); }, 30000);
+    // Poll every 8 s as a guaranteed fallback when real-time isn't enabled,
+    // so an already-open tab on another device catches changes quickly.
+    setInterval(() => { if (!document.hidden) pullNow(); }, 8000);
   };
 })();
