@@ -2849,7 +2849,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   // renderAllNetWorth which runs BEFORE this section's code (temporal dead
   // zone). All DOM lookups happen inside the function body instead.
   function nwGrandCHF() {
-    let g = 0;
+    let g = plaidRawUSD / (exchangeRates.USD || 1);
     NW_CATS.forEach(cat => {
       const items = storeGet('nw:' + cat.key) || [];
       items.forEach(it => { g += Number(it.amount) || 0; });
