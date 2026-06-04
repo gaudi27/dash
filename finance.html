@@ -9,6 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="sync.js" defer></script>
 <script src="topbar.js" defer></script>
+<script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
 <style>
 :root {
   --bg: #0A0A0B;
@@ -1568,6 +1569,127 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 @media (max-width: 600px) {
   .sub-auto-toggle { width: 100%; justify-content: space-between; padding: 12px 14px; }
 }
+
+/* ===== PLAID ACCOUNT CARDS ===== */
+.plaid-connect-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 10px; margin-bottom: 18px;
+}
+.plaid-connect-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 11px 20px;
+  background: linear-gradient(180deg, #ffffff 0%, #e8e5dd 100%);
+  color: #0a0a0b; border: none; border-radius: 12px;
+  font-family: inherit; font-size: 13px; font-weight: 700;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), 0 4px 14px rgba(0,0,0,0.40);
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s;
+}
+.plaid-connect-btn:hover { transform: translateY(-1px); }
+.plaid-connect-btn:active { transform: scale(0.97); }
+.plaid-empty-state {
+  text-align: center; padding: 48px 20px;
+  border: 1px dashed rgba(255,255,255,0.10);
+  border-radius: 16px; margin-bottom: 18px;
+}
+.plaid-empty-icon { font-size: 36px; margin-bottom: 12px; }
+.plaid-empty-title { font-size: 15px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; }
+.plaid-empty-sub { font-size: 13px; color: var(--text-tertiary); line-height: 1.5; }
+.plaid-loading-state {
+  text-align: center; padding: 32px;
+  font-size: 13px; color: var(--text-tertiary);
+}
+.plaid-spinner {
+  display: inline-block; width: 18px; height: 18px;
+  border: 2px solid rgba(255,255,255,0.12);
+  border-top-color: rgba(255,255,255,0.6);
+  border-radius: 50%;
+  animation: plaid-spin 0.7s linear infinite;
+  margin-right: 8px; vertical-align: middle;
+}
+@keyframes plaid-spin { to { transform: rotate(360deg); } }
+.plaid-account-card {
+  background: var(--bg-card);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 16px;
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+.plaid-account-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding: 18px 20px 12px;
+}
+.plaid-institution-name {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--text-tertiary); margin-bottom: 4px;
+}
+.plaid-account-name {
+  font-size: 14px; font-weight: 600; color: var(--text-primary);
+}
+.plaid-balance-wrap { text-align: right; }
+.plaid-balance-num {
+  font-size: 26px; font-weight: 700; letter-spacing: -0.02em;
+  color: var(--text-primary); font-variant-numeric: tabular-nums;
+}
+.plaid-balance-avail {
+  font-size: 11px; color: var(--text-tertiary); margin-top: 2px;
+}
+.plaid-reconnect-banner {
+  margin: 0 20px 14px;
+  padding: 10px 14px;
+  background: rgba(255,138,138,0.08);
+  border: 1px solid rgba(255,138,138,0.22);
+  border-radius: 10px;
+  font-size: 12px; color: #ff8a8a;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+}
+.plaid-reconnect-btn {
+  background: transparent; border: 1px solid rgba(255,138,138,0.40);
+  color: #ff8a8a; border-radius: 8px; padding: 5px 12px;
+  font-family: inherit; font-size: 11px; font-weight: 700;
+  cursor: pointer; white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+.plaid-spark-wrap {
+  padding: 0 20px 4px; position: relative;
+}
+.plaid-spark-svg { width: 100%; height: 56px; display: block; overflow: visible; }
+.plaid-spark-line { fill: none; stroke: var(--success); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.plaid-spark-fill { fill: url(#plaidSparkGrad); }
+.plaid-spark-empty { text-align: center; padding: 16px; font-size: 12px; color: var(--text-tertiary); }
+.plaid-txn-section { padding: 0 20px 16px; }
+.plaid-txn-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--text-tertiary);
+  margin-bottom: 10px; display: flex; align-items: center; gap: 8px;
+}
+.plaid-txn-label::before { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.07); }
+.plaid-txn-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+  gap: 10px;
+}
+.plaid-txn-row:last-child { border-bottom: none; }
+.plaid-txn-left { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.plaid-txn-name {
+  font-size: 13px; font-weight: 500; color: var(--text-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.plaid-txn-date { font-size: 11px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+.plaid-txn-amount {
+  font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums;
+  white-space: nowrap; flex-shrink: 0;
+}
+.plaid-txn-amount.debit { color: #ff8a8a; }
+.plaid-txn-amount.credit { color: var(--success); }
+.plaid-txn-pending { font-size: 10px; color: var(--text-tertiary); margin-left: 4px; }
+.plaid-txn-empty { font-size: 12px; color: var(--text-tertiary); font-style: italic; padding: 8px 0; }
+.plaid-error-msg {
+  background: rgba(255,138,138,0.07); border: 1px solid rgba(255,138,138,0.18);
+  border-radius: 10px; padding: 12px 16px; margin-bottom: 14px;
+  font-size: 13px; color: #ff8a8a;
+}
 </style>
 </head>
 <body>
@@ -1728,6 +1850,40 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   </div>
 </div>
 
+<!-- ===== LINKED ACCOUNTS ===== -->
+<div class="section" data-section="accounts" hidden>
+  <div class="section-title">
+    <span class="section-title-text">LINKED ACCOUNTS</span>
+  </div>
+
+  <div id="plaidErrorMsg" class="plaid-error-msg" hidden></div>
+
+  <div id="plaidEmptyState" class="plaid-empty-state" hidden>
+    <div class="plaid-empty-icon">🏦</div>
+    <div class="plaid-empty-title">No accounts connected</div>
+    <div class="plaid-empty-sub">Connect your Capital One, Bank of America,<br>or Fidelity accounts to see live balances<br>and transactions update automatically.</div>
+  </div>
+
+  <div id="plaidLoadingState" class="plaid-loading-state" hidden>
+    <span class="plaid-spinner"></span>Loading accounts…
+  </div>
+
+  <div id="plaidAccountList"></div>
+
+  <svg width="0" height="0" style="position:absolute">
+    <defs>
+      <linearGradient id="plaidSparkGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#6BE3A4" stop-opacity="0.30"/>
+        <stop offset="100%" stop-color="#6BE3A4" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+  </svg>
+
+  <div class="plaid-connect-bar">
+    <button id="plaidConnectBtn" class="plaid-connect-btn">+ Connect Account</button>
+  </div>
+</div>
+
 <!-- ===== ACTIVE SUBSCRIPTIONS ===== -->
 <div class="section" data-section="subs">
   <div class="section-title">
@@ -1884,6 +2040,10 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     <span class="bot-tab-icon">🎯</span>
     <span class="bot-tab-label">Wishlist</span>
   </button>
+  <button class="bot-tab" data-tab="accounts">
+    <span class="bot-tab-icon">🏦</span>
+    <span class="bot-tab-label">Accounts</span>
+  </button>
 </nav>
 
 <script>
@@ -1933,7 +2093,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   }
   tabs.forEach(b => b.addEventListener('click', () => setActiveTab(b.dataset.tab)));
   const savedTab = storeGet(TAB_KEY);
-  setActiveTab(savedTab && ['net','subs','incoming','wish'].includes(savedTab) ? savedTab : 'net');
+  setActiveTab(savedTab && ['net','subs','incoming','wish','accounts'].includes(savedTab) ? savedTab : 'net');
 
   // ============================================================
   // NET WORTH (copied from the main dashboard, verbatim logic)
@@ -3377,6 +3537,214 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 })();
 </script>
+
+<!-- ===== PLAID INTEGRATION ===== -->
+<script>
+(function () {
+  'use strict';
+
+  // ---- helpers ----
+  function fmt(amount, currency) {
+    currency = currency || 'USD';
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 2 }).format(amount);
+  }
+  function fmtDate(str) {
+    const [y, m, d] = str.split('-').map(Number);
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return months[m - 1] + ' ' + d;
+  }
+
+  // Reconstruct 30-day balance history from current balance + transactions.
+  // Plaid: positive amount = debit (money left), negative = credit (money arrived).
+  function buildBalanceHistory(transactions, currentBalance) {
+    const byDate = {};
+    transactions.forEach(t => { byDate[t.date] = (byDate[t.date] || 0) + t.amount; });
+    const points = [];
+    let bal = currentBalance;
+    for (let i = 0; i < 30; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      points.unshift({ date: key, balance: bal });
+      bal += (byDate[key] || 0); // add back debits to get yesterday's higher balance
+    }
+    return points;
+  }
+
+  function buildSparklineSvg(points) {
+    if (!points || points.length < 2) return '<div class="plaid-spark-empty">Not enough data for chart</div>';
+    const vals = points.map(p => p.balance);
+    const min = Math.min(...vals);
+    const max = Math.max(...vals);
+    const range = max - min || 1;
+    const W = 300, H = 56, PAD = 4;
+    const xs = points.map((_, i) => PAD + (i / (points.length - 1)) * (W - PAD * 2));
+    const ys = vals.map(v => PAD + (1 - (v - min) / range) * (H - PAD * 2));
+    let path = 'M' + xs[0] + ',' + ys[0];
+    for (let i = 1; i < xs.length; i++) path += ' L' + xs[i] + ',' + ys[i];
+    const area = path + ' L' + xs[xs.length - 1] + ',' + H + ' L' + xs[0] + ',' + H + ' Z';
+    return '<svg class="plaid-spark-svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none">' +
+      '<path class="plaid-spark-fill" d="' + area + '"/>' +
+      '<path class="plaid-spark-line" d="' + path + '"/>' +
+      '</svg>';
+  }
+
+  function renderAccountCard(instItem, txnItem) {
+    const institution = instItem.institution || 'Unknown Bank';
+    const accounts = instItem.accounts || [];
+    if (!accounts.length && instItem.error) {
+      const needsReconnect = instItem.error === 'ITEM_LOGIN_REQUIRED';
+      return '<div class="plaid-account-card">' +
+        '<div class="plaid-account-header">' +
+          '<div><div class="plaid-institution-name">' + institution + '</div>' +
+          '<div class="plaid-account-name">Connection issue</div></div>' +
+        '</div>' +
+        (needsReconnect
+          ? '<div class="plaid-reconnect-banner">Session expired — please reconnect.' +
+            '<button class="plaid-reconnect-btn" onclick="window.__plaidReconnect && window.__plaidReconnect()">Reconnect</button></div>'
+          : '<div class="plaid-reconnect-banner">' + instItem.error + '</div>') +
+        '</div>';
+    }
+
+    return accounts.map(acct => {
+      const cur = acct.balance.current != null ? acct.balance.current : 0;
+      const avail = acct.balance.available;
+      const currency = acct.balance.currency || 'USD';
+      const acctTxns = (txnItem && txnItem.transactions || []).filter(t => t.account_id === acct.account_id);
+      const history = buildBalanceHistory(acctTxns, cur);
+      const recentTxns = acctTxns.slice(0, 20);
+
+      const txnRows = recentTxns.length
+        ? recentTxns.map(t => {
+            const isDebit = t.amount > 0;
+            const sign = isDebit ? '-' : '+';
+            const cls = isDebit ? 'debit' : 'credit';
+            return '<div class="plaid-txn-row">' +
+              '<div class="plaid-txn-left">' +
+                '<span class="plaid-txn-name">' + t.name + '</span>' +
+                '<span class="plaid-txn-date">' + fmtDate(t.date) + (t.pending ? ' · pending' : '') + '</span>' +
+              '</div>' +
+              '<span class="plaid-txn-amount ' + cls + '">' + sign + fmt(Math.abs(t.amount), currency) + '</span>' +
+            '</div>';
+          }).join('')
+        : '<div class="plaid-txn-empty">No recent transactions</div>';
+
+      return '<div class="plaid-account-card">' +
+        '<div class="plaid-account-header">' +
+          '<div>' +
+            '<div class="plaid-institution-name">' + institution + '</div>' +
+            '<div class="plaid-account-name">' + (acct.official_name || acct.name) + '</div>' +
+          '</div>' +
+          '<div class="plaid-balance-wrap">' +
+            '<div class="plaid-balance-num">' + fmt(cur, currency) + '</div>' +
+            (avail != null ? '<div class="plaid-balance-avail">' + fmt(avail, currency) + ' available</div>' : '') +
+          '</div>' +
+        '</div>' +
+        '<div class="plaid-spark-wrap">' + buildSparklineSvg(history) + '</div>' +
+        '<div class="plaid-txn-section">' +
+          '<div class="plaid-txn-label">Recent transactions</div>' +
+          txnRows +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  async function loadAccounts() {
+    const listEl   = document.getElementById('plaidAccountList');
+    const emptyEl  = document.getElementById('plaidEmptyState');
+    const loadEl   = document.getElementById('plaidLoadingState');
+    const errEl    = document.getElementById('plaidErrorMsg');
+
+    emptyEl.hidden = true; errEl.hidden = true;
+    loadEl.hidden = false; listEl.innerHTML = '';
+
+    try {
+      const [acctRes, txnRes] = await Promise.all([
+        fetch('/api/plaid/accounts').then(r => r.json()),
+        fetch('/api/plaid/transactions').then(r => r.json()),
+      ]);
+      loadEl.hidden = true;
+
+      if (acctRes.error) { errEl.textContent = 'Error: ' + acctRes.error; errEl.hidden = false; emptyEl.hidden = false; return; }
+
+      const items = acctRes.items || [];
+      if (!items.length) { emptyEl.hidden = false; return; }
+
+      const txnMap = {};
+      (txnRes.items || []).forEach(ti => { txnMap[ti.item_id] = ti; });
+
+      listEl.innerHTML = items.map(item => renderAccountCard(item, txnMap[item.item_id])).join('');
+    } catch (err) {
+      loadEl.hidden = true;
+      errEl.textContent = 'Could not load accounts. Check your connection.';
+      errEl.hidden = false;
+    }
+  }
+
+  async function openPlaidLink(token) {
+    return new Promise((resolve, reject) => {
+      if (!window.Plaid) return reject(new Error('Plaid Link not loaded'));
+      const handler = window.Plaid.create({
+        token,
+        onSuccess: (public_token, metadata) => resolve({ public_token, metadata }),
+        onExit: (err) => { if (err) console.warn('Plaid exit:', err); resolve(null); },
+      });
+      handler.open();
+    });
+  }
+
+  async function connectAccount() {
+    const btn = document.getElementById('plaidConnectBtn');
+    btn.disabled = true; btn.textContent = 'Opening…';
+    try {
+      const ltRes = await fetch('/api/plaid/link-token', { method: 'POST' });
+      const { link_token, error } = await ltRes.json();
+      if (!link_token) { alert('Could not start Plaid Link: ' + (error || 'unknown error')); return; }
+
+      const result = await openPlaidLink(link_token);
+      if (!result) return; // user cancelled
+
+      const { public_token, metadata } = result;
+      const institution = metadata.institution ? metadata.institution.name : 'Unknown Bank';
+
+      btn.textContent = 'Saving…';
+      const exRes = await fetch('/api/plaid/exchange-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ public_token, institution }),
+      });
+      const exData = await exRes.json();
+      if (!exData.success) { alert('Error saving connection: ' + (exData.error || 'unknown')); return; }
+
+      await loadAccounts();
+    } catch (err) {
+      alert('Error: ' + err.message);
+    } finally {
+      btn.disabled = false; btn.textContent = '+ Connect Account';
+    }
+  }
+
+  // expose for reconnect button
+  window.__plaidReconnect = connectAccount;
+
+  // hook up connect button
+  document.getElementById('plaidConnectBtn').addEventListener('click', connectAccount);
+
+  // load accounts when Accounts tab is shown
+  const tabs = document.querySelectorAll('.bot-tab');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      if (tab.dataset.tab === 'accounts') loadAccounts();
+    });
+  });
+
+  // if Accounts tab is active on page load, load immediately
+  if ((localStorage.getItem('finance_active_tab') || '').replace(/"/g, '') === 'accounts') {
+    loadAccounts();
+  }
+})();
+</script>
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   if (typeof initCloudSync !== 'function') return;
