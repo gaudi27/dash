@@ -131,5 +131,26 @@
     window.addEventListener('beforeunload', flushOnUnload);
     window.addEventListener('pagehide', flushOnUnload);
     window.addEventListener('storage', (e) => { if (e.key && matches(e.key)) schedulePush(); });
+
+    // Re-pull from Supabase whenever the tab becomes visible again (e.g. switching
+    // from phone to browser, or returning to the tab after logging on another device).
+    // This is a reliable fallback when Supabase real-time isn't enabled on the table.
+    async function pullNow() {
+      if (!supa) return;
+      try {
+        const { data, error } = await supa.from('app_state').select('data').eq('key', appKey).maybeSingle();
+        if (!error && data && data.data) {
+          const incoming = JSON.stringify(data.data);
+          if (incoming !== lastSyncedJson) {
+            lastSyncedJson = incoming;
+            applyRemote(data.data);
+          }
+        }
+      } catch (e) {}
+    }
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) pullNow();
+    });
+    window.addEventListener('focus', pullNow);
   };
 })();
