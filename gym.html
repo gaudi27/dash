@@ -1995,9 +1995,10 @@ img, video, canvas, svg { max-width: 100%; }
     try {
       const rot = state.splitRotation;
       if (!rot || !rot.length) return { name: '—', index: 0 };
-      const a = new Date(state.splitAnchor.date);
+      const [_ay, _am, _ad] = state.splitAnchor.date.split('-').map(Number);
+      const a = new Date(_ay, _am - 1, _ad); // local midnight — avoids UTC-parse off-by-one
       const t = new Date();
-      a.setHours(0,0,0,0); t.setHours(0,0,0,0);
+      t.setHours(0, 0, 0, 0);
       const diffDays = Math.round((t - a) / 86400000);
       const idx = ((state.splitAnchor.index + diffDays) % rot.length + rot.length) % rot.length;
       return { name: rot[idx], index: idx };
@@ -2488,8 +2489,9 @@ img, video, canvas, svg { max-width: 100%; }
     let newTodayIdx = rotDraftTodayIdx;
     if (newTodayIdx >= cleaned.length) newTodayIdx = 0;
     state.splitRotation = cleaned;
+    const _n = new Date();
     state.splitAnchor = {
-      date: new Date().toISOString().slice(0, 10),
+      date: _n.getFullYear() + '-' + String(_n.getMonth() + 1).padStart(2, '0') + '-' + String(_n.getDate()).padStart(2, '0'),
       index: newTodayIdx
     };
     saveState();
