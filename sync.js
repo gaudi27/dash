@@ -82,8 +82,17 @@
           { key: appKey, data: state, updated_at: new Date().toISOString() },
           { onConflict: 'key' }
         );
-        if (!error) lastSyncedJson = json;
-      } catch (e) {}
+        if (!error) {
+          lastSyncedJson = json;
+          window.__syncStatus = { dir: 'push', ok: true, at: Date.now(), appKey: appKey };
+        } else {
+          window.__syncStatus = { dir: 'push', ok: false, at: Date.now(), appKey: appKey, error: error.message || JSON.stringify(error) };
+          console.error('[sync] push failed for "' + appKey + '":', error);
+        }
+      } catch (e) {
+        window.__syncStatus = { dir: 'push', ok: false, at: Date.now(), appKey: appKey, error: String(e && e.message || e) };
+        console.error('[sync] push threw for "' + appKey + '":', e);
+      }
     }
     function schedulePush() { clearTimeout(pushTimer); pushTimer = setTimeout(pushNow, 250); }
     function flushOnUnload() {
@@ -139,14 +148,23 @@
       if (!supa) return;
       try {
         const { data, error } = await supa.from('app_state').select('data').eq('key', appKey).maybeSingle();
-        if (!error && data && data.data) {
+        if (error) {
+          window.__syncStatus = { dir: 'pull', ok: false, at: Date.now(), appKey: appKey, error: error.message || JSON.stringify(error) };
+          console.error('[sync] pull failed for "' + appKey + '":', error);
+          return;
+        }
+        if (data && data.data) {
           const incoming = JSON.stringify(data.data);
           if (incoming !== lastSyncedJson) {
             lastSyncedJson = incoming;
             applyRemote(data.data);
           }
         }
-      } catch (e) {}
+        window.__syncStatus = { dir: 'pull', ok: true, at: Date.now(), appKey: appKey };
+      } catch (e) {
+        window.__syncStatus = { dir: 'pull', ok: false, at: Date.now(), appKey: appKey, error: String(e && e.message || e) };
+        console.error('[sync] pull threw for "' + appKey + '":', e);
+      }
     }
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) pullNow();

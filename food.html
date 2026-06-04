@@ -393,6 +393,9 @@ html, body {
     <div class="chat-messages" id="chatMessages"></div>
   </div>
 
+  <!-- Sync status (tap for details) -->
+  <button id="syncStatus" style="width:100%;margin-top:10px;padding:8px 12px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;color:var(--text-3);font-family:var(--font-mono);font-size:11px;cursor:pointer;-webkit-tap-highlight-color:transparent;text-align:left">Sync: starting…</button>
+
 </div>
 
 <!-- Fixed input bar -->
@@ -714,6 +717,45 @@ html, body {
     goals = loadGoals();
     render();
   };
+
+  // ---- Visible sync status (so we can diagnose cross-device issues) ----
+  const syncBtn = document.getElementById('syncStatus');
+  function fmtAgo(ts) {
+    const s = Math.round((Date.now() - ts) / 1000);
+    if (s < 5) return 'just now';
+    if (s < 60) return s + 's ago';
+    return Math.round(s / 60) + 'm ago';
+  }
+  function refreshSyncStatus() {
+    const st = window.__syncStatus;
+    if (!st) {
+      if (typeof initCloudSync !== 'function') {
+        syncBtn.textContent = 'Sync: helper not loaded ⚠️';
+        syncBtn.style.color = 'var(--bad)';
+      } else if (!window.supabase) {
+        syncBtn.textContent = 'Sync: Supabase not loaded ⚠️';
+        syncBtn.style.color = 'var(--bad)';
+      } else {
+        syncBtn.textContent = 'Sync: connecting…';
+        syncBtn.style.color = 'var(--text-3)';
+      }
+      return;
+    }
+    if (st.ok) {
+      syncBtn.textContent = 'Sync ✓ last ' + st.dir + ' ' + fmtAgo(st.at);
+      syncBtn.style.color = 'var(--good)';
+    } else {
+      syncBtn.textContent = 'Sync ✗ ' + st.dir + ' failed — tap for details';
+      syncBtn.style.color = 'var(--bad)';
+    }
+  }
+  syncBtn.addEventListener('click', () => {
+    const st = window.__syncStatus;
+    if (!st) { alert('Sync has not run yet.\n\ninitCloudSync: ' + (typeof initCloudSync) + '\nwindow.supabase: ' + (typeof window.supabase)); return; }
+    alert('Last sync\n\nDirection: ' + st.dir + '\nOK: ' + st.ok + '\nWhen: ' + fmtAgo(st.at) + '\nKey: ' + st.appKey + (st.error ? '\n\nError:\n' + st.error : ''));
+  });
+  setInterval(refreshSyncStatus, 1000);
+  refreshSyncStatus();
 })();
 </script>
 <script>
