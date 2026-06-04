@@ -724,6 +724,7 @@ document.addEventListener('DOMContentLoaded', function () {
     syncedKeys: ['food_log_v1', 'food_goals_v1', 'food_history_v1'],
     onApplied: function () {
       if (typeof window.__foodSyncApplied === 'function') window.__foodSyncApplied();
+      window.dispatchEvent(new Event('storage'));
     }
   });
 });

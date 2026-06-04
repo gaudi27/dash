@@ -152,5 +152,7 @@
       if (!document.hidden) pullNow();
     });
     window.addEventListener('focus', pullNow);
+    // Poll every 30 s as a guaranteed fallback when real-time isn't enabled.
+    setInterval(() => { if (!document.hidden) pullNow(); }, 30000);
   };
 })();
