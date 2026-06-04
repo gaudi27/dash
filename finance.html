@@ -1805,46 +1805,23 @@ input[type="date"]::-webkit-calendar-picker-indicator {
       <div class="nw-activity-empty" id="nwActivityEmpty">No activity yet — add your first account.</div>
     </div>
 
-    <div class="card-grid" style="gap:10px">
-      <!-- Bank accounts -->
-      <div class="card nw-subcard">
-        <div class="label" style="display:flex;justify-content:space-between;align-items:center"><span>🏦 Bank accounts</span><span id="bankTotal" style="font-size:13px;color:var(--text-primary);font-weight:600">0</span></div>
-        <div id="bankList" class="nw-list"></div>
-        <div class="quick-add">
-          <input type="text" placeholder="Account name" id="bankName" />
-          <input type="number" placeholder="Amount" id="bankAmount" step="0.01" />
-          <button class="quick-add-btn" id="bankAddBtn">+</button>
-        </div>
+    <!-- Linked accounts — live totals from Plaid -->
+    <div class="card nw-subcard" style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px">
+      <div>
+        <div class="label" style="margin:0">🏦 Linked accounts</div>
+        <div style="font-size:11px;color:var(--text-tertiary);margin-top:3px">Live · Capital One · Bank of America · Fidelity</div>
       </div>
-      <!-- Stocks / Investments -->
-      <div class="card nw-subcard">
-        <div class="label" style="display:flex;justify-content:space-between;align-items:center"><span>📈 Stocks / Investments</span><span id="stocksTotal" style="font-size:13px;color:var(--text-primary);font-weight:600">0</span></div>
-        <div id="stocksList" class="nw-list"></div>
-        <div class="quick-add">
-          <input type="text" placeholder="Stock / fund" id="stocksName" />
-          <input type="number" placeholder="Value" id="stocksAmount" step="0.01" />
-          <button class="quick-add-btn" id="stocksAddBtn">+</button>
-        </div>
-      </div>
-      <!-- Crypto -->
-      <div class="card nw-subcard">
-        <div class="label" style="display:flex;justify-content:space-between;align-items:center"><span>🪙 Crypto</span><span id="cryptoTotal" style="font-size:13px;color:var(--text-primary);font-weight:600">0</span></div>
-        <div id="cryptoList" class="nw-list"></div>
-        <div class="quick-add">
-          <input type="text" placeholder="Coin / wallet" id="cryptoName" />
-          <input type="number" placeholder="Value" id="cryptoAmount" step="0.01" />
-          <button class="quick-add-btn" id="cryptoAddBtn">+</button>
-        </div>
-      </div>
-      <!-- Other assets -->
-      <div class="card nw-subcard">
-        <div class="label" style="display:flex;justify-content:space-between;align-items:center"><span>💼 Other assets</span><span id="otherTotal" style="font-size:13px;color:var(--text-primary);font-weight:600">0</span></div>
-        <div id="otherList" class="nw-list"></div>
-        <div class="quick-add">
-          <input type="text" placeholder="Asset name" id="otherName" />
-          <input type="number" placeholder="Value" id="otherAmount" step="0.01" />
-          <button class="quick-add-btn" id="otherAddBtn">+</button>
-        </div>
+      <span id="nwPlaidTotal" style="font-size:15px;font-weight:700;color:var(--text-primary);font-variant-numeric:tabular-nums">—</span>
+    </div>
+
+    <!-- Other assets -->
+    <div class="card nw-subcard">
+      <div class="label" style="display:flex;justify-content:space-between;align-items:center"><span>💼 Other assets</span><span id="otherTotal" style="font-size:13px;color:var(--text-primary);font-weight:600">0</span></div>
+      <div id="otherList" class="nw-list"></div>
+      <div class="quick-add">
+        <input type="text" placeholder="Asset name" id="otherName" />
+        <input type="number" placeholder="Value" id="otherAmount" step="0.01" />
+        <button class="quick-add-btn" id="otherAddBtn">+</button>
       </div>
     </div>
   </div>
@@ -2100,10 +2077,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   // ============================================================
   const CURRENCY_KEY = 'nw_currency';
   const NW_CATS = [
-    { key: 'bank',   listId: 'bankList',   totalId: 'bankTotal',   nameId: 'bankName',   amtId: 'bankAmount',   addId: 'bankAddBtn' },
-    { key: 'stocks', listId: 'stocksList', totalId: 'stocksTotal', nameId: 'stocksName', amtId: 'stocksAmount', addId: 'stocksAddBtn' },
-    { key: 'crypto', listId: 'cryptoList', totalId: 'cryptoTotal', nameId: 'cryptoName', amtId: 'cryptoAmount', addId: 'cryptoAddBtn' },
-    { key: 'other',  listId: 'otherList',  totalId: 'otherTotal',  nameId: 'otherName',  amtId: 'otherAmount',  addId: 'otherAddBtn' }
+    { key: 'other', listId: 'otherList', totalId: 'otherTotal', nameId: 'otherName', amtId: 'otherAmount', addId: 'otherAddBtn' }
   ];
   const currencyEl = document.getElementById('netWorthCurrency');
   const netWorthTotal = document.getElementById('netWorthTotal');
@@ -2127,6 +2101,26 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     } catch (e) {}
   }
   loadExchangeRates();
+
+  // Plaid live balance — raw USD total, converted to CHF on the fly inside renderAllNetWorth
+  let plaidRawUSD = 0;
+  async function loadPlaidNetWorth() {
+    try {
+      const res = await fetch('/api/plaid/accounts');
+      if (!res.ok) return;
+      const { items } = await res.json();
+      if (!items) return;
+      let total = 0;
+      items.forEach(item => {
+        (item.accounts || []).forEach(acct => {
+          if (acct.balance && acct.balance.current != null) total += acct.balance.current;
+        });
+      });
+      plaidRawUSD = total;
+      renderAllNetWorth();
+    } catch (e) {}
+  }
+  loadPlaidNetWorth();
 
   function fmtMoney(amountCHF) {
     const symbol = currencyEl ? currencyEl.value : 'CHF';
@@ -2238,15 +2232,19 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   }
 
   function renderAllNetWorth() {
-    let grand = 0;
+    const plaidCHF = plaidRawUSD / (exchangeRates.USD || 1);
+    let grand = plaidCHF;
     const breakdown = [];
-    const sliceTotals = {};
+    const sliceTotals = { accounts: plaidCHF };
+    if (plaidCHF > 0) breakdown.push('Accounts: ' + fmtMoney(plaidCHF));
     NW_CATS.forEach(cat => {
       const sub = renderNetWorthCategory(cat);
       grand += sub;
       sliceTotals[cat.key] = sub;
-      if (sub > 0) breakdown.push(cat.key + ': ' + fmtMoney(sub));
+      if (sub > 0) breakdown.push('Other: ' + fmtMoney(sub));
     });
+    const nwPlaidEl = document.getElementById('nwPlaidTotal');
+    if (nwPlaidEl) nwPlaidEl.textContent = plaidCHF > 0 ? fmtMoney(plaidCHF) : '—';
     if (netWorthTotal) netWorthTotal.textContent = fmtMoney(grand);
     if (netWorthBreakdown) netWorthBreakdown.textContent = breakdown.join('  •  ');
     logNetWorthSnapshot(grand);
@@ -2322,6 +2320,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   // Each NW category gets a fixed color; subs get red because outflow.
   // ============================================================
   const NW_SLICE_META = {
+    accounts: { name: 'Accounts', color: '#7DD3FC' },
     bank:   { name: 'Bank',     color: '#7DD3FC' },
     stocks: { name: 'Stocks',   color: '#6EE7B7' },
     crypto: { name: 'Crypto',   color: '#FBBF24' },
@@ -2372,6 +2371,11 @@ input[type="date"]::-webkit-calendar-picker-indicator {
         }
       });
     });
+    // Linked accounts (Plaid) — one aggregate slice
+    const _plaidCHF = plaidRawUSD / (exchangeRates.USD || 1);
+    if (_plaidCHF > 0) {
+      slices.push({ key: 'accounts', name: 'Linked accounts', color: '#7DD3FC', value: _plaidCHF });
+    }
     // Subs annualized — one aggregate slice (no per-sub breakdown here).
     const subItems = storeGet('subs') || [];
     const annualSubsCHF = subItems.reduce((s, it) => s + monthlyEquivalent(it) * 12, 0);
