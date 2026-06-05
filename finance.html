@@ -2011,23 +2011,36 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   }
   loadExchangeRates();
 
-  // Plaid live balance — raw USD total, converted to CHF on the fly inside renderAllNetWorth
-  let plaidRawUSD = 0;
+  // Plaid live balance — raw USD total, converted to CHF on the fly inside renderAllNetWorth.
+  // We cache the last known total so the page renders the correct net worth IMMEDIATELY on
+  // load (instead of 0), which stops the chart from recording false dips/spikes while the
+  // bank API call is still in flight.
+  const PLAID_CACHE_KEY = 'nw:plaid_usd';
+  let plaidRawUSD = Number(storeGet(PLAID_CACHE_KEY)) || 0;
+  // Only allow net-worth snapshots once we trust the Plaid figure: either we have a cached
+  // value from a previous load, or the live fetch has completed this session.
+  let plaidLoaded = storeGet(PLAID_CACHE_KEY) != null;
   async function loadPlaidNetWorth() {
     try {
       const res = await fetch('/api/plaid/accounts');
-      if (!res.ok) return;
+      if (!res.ok) { plaidLoaded = true; renderAllNetWorth(); return; }
       const { items } = await res.json();
-      if (!items) return;
       let total = 0;
-      items.forEach(item => {
+      (items || []).forEach(item => {
         (item.accounts || []).forEach(acct => {
           if (acct.balance && acct.balance.current != null) total += acct.balance.current;
         });
       });
       plaidRawUSD = total;
+      plaidLoaded = true;
+      storeSet(PLAID_CACHE_KEY, total);
       renderAllNetWorth();
-    } catch (e) {}
+    } catch (e) {
+      // On a failed fetch, still let snapshots resume using the cached/last value so
+      // the chart doesn't freeze — but never log the bare 0 from a cold first load.
+      if (storeGet(PLAID_CACHE_KEY) != null) plaidLoaded = true;
+      renderAllNetWorth();
+    }
   }
   loadPlaidNetWorth();
 
@@ -2156,7 +2169,9 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     if (nwPlaidEl) nwPlaidEl.textContent = plaidCHF > 0 ? fmtMoney(plaidCHF) : '—';
     if (netWorthTotal) netWorthTotal.textContent = fmtMoney(grand);
     if (netWorthBreakdown) netWorthBreakdown.textContent = breakdown.join('  •  ');
-    logNetWorthSnapshot(grand);
+    // Don't record a snapshot until the Plaid balances are trusted — otherwise a
+    // half-loaded total (assets only, banks still loading) pollutes the chart.
+    if (plaidLoaded) logNetWorthSnapshot(grand);
     renderNetWorthChart();
     renderAllocationDonut(sliceTotals, grand);
     renderActivity();
@@ -2337,6 +2352,32 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   // Net-worth history chart
   const NW_HISTORY_KEY = 'nw:history';
   const NW_HISTORY_MAX = 500;
+
+  // One-time repair of history corrupted by the old "banks still loading" bug:
+  // remove zero/negative snapshots (the bogus "all-time low 0") and collapse
+  // rapid-fire reload clusters (a partial dip immediately followed by the full
+  // value) down to the true, fully-loaded figure.
+  (function repairNetWorthHistory() {
+    if (storeGet('nw:history_repaired_v1')) return;
+    let hist = storeGet(NW_HISTORY_KEY) || [];
+    if (hist.length) {
+      hist = hist.filter(s => Number(s.v) > 0);
+      const collapsed = [];
+      for (const s of hist) {
+        const prev = collapsed[collapsed.length - 1];
+        if (prev && Math.abs((s.t || 0) - (prev.t || 0)) < 60000) {
+          // Same reload cluster — keep the higher (fully-loaded) value.
+          if ((Number(s.v) || 0) > (Number(prev.v) || 0)) prev.v = s.v;
+          prev.t = s.t;
+        } else {
+          collapsed.push({ t: s.t, v: s.v });
+        }
+      }
+      storeSet(NW_HISTORY_KEY, collapsed);
+    }
+    storeSet('nw:history_repaired_v1', true);
+  })();
+
   function logNetWorthSnapshot(grandCHF) {
     const v = Number(grandCHF) || 0;
     const hist = storeGet(NW_HISTORY_KEY) || [];
