@@ -2353,37 +2353,45 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   const NW_HISTORY_KEY = 'nw:history';
   const NW_HISTORY_MAX = 500;
 
-  // One-time repair of history corrupted by the old "banks still loading" bug:
-  // remove zero/negative snapshots (the bogus "all-time low 0") and collapse
-  // rapid-fire reload clusters (a partial dip immediately followed by the full
-  // value) down to the true, fully-loaded figure.
-  (function repairNetWorthHistory() {
-    if (storeGet('nw:history_repaired_v1')) return;
+  function nwDayKey(ts) {
+    const d = new Date(ts);
+    return d.getFullYear() + '-' +
+      String(d.getMonth() + 1).padStart(2, '0') + '-' +
+      String(d.getDate()).padStart(2, '0');
+  }
+
+  // One-time rebuild to a clean ONE-POINT-PER-DAY series. The old code logged a
+  // snapshot on every render/edit, so reloads (banks loading) and asset edits
+  // created intraday spikes. Collapse to the last value recorded each calendar
+  // day and drop any zero/negative readings.
+  (function rebuildNetWorthHistoryDaily() {
+    if (storeGet('nw:history_repaired_v2')) return;
     let hist = storeGet(NW_HISTORY_KEY) || [];
     if (hist.length) {
-      hist = hist.filter(s => Number(s.v) > 0);
-      const collapsed = [];
-      for (const s of hist) {
-        const prev = collapsed[collapsed.length - 1];
-        if (prev && Math.abs((s.t || 0) - (prev.t || 0)) < 60000) {
-          // Same reload cluster — keep the higher (fully-loaded) value.
-          if ((Number(s.v) || 0) > (Number(prev.v) || 0)) prev.v = s.v;
-          prev.t = s.t;
-        } else {
-          collapsed.push({ t: s.t, v: s.v });
-        }
-      }
-      storeSet(NW_HISTORY_KEY, collapsed);
+      const byDay = new Map();
+      hist.filter(s => Number(s.v) > 0)
+          .sort((a, b) => (a.t || 0) - (b.t || 0))
+          .forEach(s => { byDay.set(nwDayKey(s.t), { t: s.t, v: Number(s.v) }); }); // last write per day wins
+      storeSet(NW_HISTORY_KEY, Array.from(byDay.values()));
     }
-    storeSet('nw:history_repaired_v1', true);
+    storeSet('nw:history_repaired_v2', true);
   })();
 
+  // Keep exactly one snapshot per calendar day = that day's latest net worth.
+  // Repeated renders/edits/reloads on the same day just update today's point,
+  // so the chart shows a clean day-over-day trend with no intraday noise.
   function logNetWorthSnapshot(grandCHF) {
     const v = Number(grandCHF) || 0;
+    if (v <= 0) return; // never record an empty state
     const hist = storeGet(NW_HISTORY_KEY) || [];
+    const now = Date.now();
     const last = hist[hist.length - 1];
-    if (last && Math.abs((last.v || 0) - v) < 0.005) return;
-    hist.push({ t: Date.now(), v: v });
+    if (last && nwDayKey(last.t) === nwDayKey(now)) {
+      if (Math.abs((last.v || 0) - v) < 0.005) return;
+      last.v = v; last.t = now;             // update today's point in place
+    } else {
+      hist.push({ t: now, v: v });           // new day → new point
+    }
     if (hist.length > NW_HISTORY_MAX) hist.splice(0, hist.length - NW_HISTORY_MAX);
     storeSet(NW_HISTORY_KEY, hist);
   }
