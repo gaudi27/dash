@@ -37,7 +37,7 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { message, foodLog, goals, history } = req.body || {};
+  const { message, foodLog, goals, history, foodHistory } = req.body || {};
   if (!message) return res.status(400).json({ error: 'Missing message' });
 
   const calGoal  = goals?.calories || 2000;
@@ -55,7 +55,13 @@ ${(foodLog || []).length === 0
   ? 'Nothing logged yet.'
   : foodLog.map(e => `• ${e.name}: ${e.calories} kcal, ${e.protein}g protein`).join('\n')}
 
+Past days (most recent last), for answering questions about previous days, trends, and averages:
+${(foodHistory || []).length === 0
+  ? 'No past days recorded yet.'
+  : foodHistory.map(h => `• ${h.date}: ${h.calories} kcal, ${h.protein}g protein`).join('\n')}
+
 Use the log_food tool when the user describes eating or drinking anything with calories.
+When asked about yesterday, a past day, or weekly/monthly trends, use the "Past days" data above (note: the most recent entry there is yesterday if today isn't finished). Do not call the tool for those — just answer conversationally.
 For questions, advice, recommendations, or general chat — respond conversationally without calling the tool.
 Be concise, warm, and realistic with nutrition estimates. When recommending foods, always factor in remaining calories and protein.`;
 

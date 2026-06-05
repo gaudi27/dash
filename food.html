@@ -313,10 +313,70 @@ html, body {
   font-family: var(--font); font-size: 13px; font-weight: 600; cursor: pointer;
 }
 
+/* ---- History / stats ---- */
+.hist-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px; margin-bottom: 12px; overflow: hidden;
+}
+.hist-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 13px 16px 11px;
+  border-bottom: 1px solid var(--border);
+}
+.hist-title {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--text-3);
+}
+.hist-range-toggle { display: flex; gap: 3px; background: rgba(255,255,255,0.04); border-radius: 8px; padding: 3px; }
+.hist-range-btn {
+  border: none; background: transparent; color: var(--text-3);
+  font-family: var(--font); font-size: 11px; font-weight: 600;
+  padding: 5px 11px; border-radius: 6px; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.hist-range-btn.active { background: rgba(255,255,255,0.10); color: var(--text-1); }
+
+.hist-stats {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: 1px; background: var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.hist-stat { background: var(--bg-card); padding: 12px 14px; }
+.hist-stat-label {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--text-4); margin-bottom: 5px;
+}
+.hist-stat-cal { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.hist-stat-prot { font-size: 11px; color: var(--good); font-variant-numeric: tabular-nums; margin-top: 2px; }
+
+.hist-chart-wrap { padding: 14px 14px 8px; }
+.hist-chart-metric {
+  display: flex; gap: 4px; margin-bottom: 12px;
+}
+.hist-metric-btn {
+  border: 1px solid var(--border); background: rgba(255,255,255,0.02);
+  color: var(--text-3); font-family: var(--font); font-size: 11px; font-weight: 600;
+  padding: 6px 12px; border-radius: 8px; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.hist-metric-btn.active {
+  background: rgba(110,231,183,0.10); border-color: rgba(110,231,183,0.25); color: var(--good);
+}
+.hist-metric-btn.cal.active {
+  background: rgba(251,191,36,0.10); border-color: rgba(251,191,36,0.25); color: var(--warn);
+}
+.hist-chart { width: 100%; height: 130px; display: block; overflow: visible; }
+.hist-bar { transition: height 0.3s ease, y 0.3s ease; }
+.hist-goal-line { stroke: rgba(255,255,255,0.25); stroke-width: 1; stroke-dasharray: 3 3; }
+.hist-axis-label { fill: var(--text-4); font-size: 8px; font-family: var(--font-mono); }
+.hist-empty { padding: 26px 16px; text-align: center; font-size: 12.5px; color: var(--text-3); font-style: italic; }
+
 @media (max-width: 480px) {
   .shell { padding-left: 12px; padding-right: 12px; }
   .prog-current { font-size: 20px; }
   .chat-messages { max-height: 260px; }
+  .hist-stat-cal { font-size: 15px; }
 }
 </style>
 </head>
@@ -381,6 +441,42 @@ html, body {
       <span class="log-totals-cals" id="totalCals">0</span>
       <span class="log-totals-prot" id="totalProt">0g</span>
       <span></span>
+    </div>
+  </div>
+
+  <!-- History / trends -->
+  <div class="hist-section">
+    <div class="hist-header">
+      <span class="hist-title">History &amp; Trends</span>
+      <div class="hist-range-toggle">
+        <button class="hist-range-btn active" data-range="7">Week</button>
+        <button class="hist-range-btn" data-range="30">Month</button>
+      </div>
+    </div>
+    <div class="hist-stats">
+      <div class="hist-stat">
+        <div class="hist-stat-label">Yesterday</div>
+        <div class="hist-stat-cal" id="histYestCal">—</div>
+        <div class="hist-stat-prot" id="histYestProt">—</div>
+      </div>
+      <div class="hist-stat">
+        <div class="hist-stat-label" id="histAvgLabel">7-day avg</div>
+        <div class="hist-stat-cal" id="histAvgCal">—</div>
+        <div class="hist-stat-prot" id="histAvgProt">—</div>
+      </div>
+      <div class="hist-stat">
+        <div class="hist-stat-label">Best protein</div>
+        <div class="hist-stat-cal" id="histBestProt">—</div>
+        <div class="hist-stat-prot" id="histBestDate">—</div>
+      </div>
+    </div>
+    <div class="hist-chart-wrap">
+      <div class="hist-chart-metric">
+        <button class="hist-metric-btn cal active" data-metric="calories">🔥 Calories</button>
+        <button class="hist-metric-btn" data-metric="protein">💪 Protein</button>
+      </div>
+      <svg class="hist-chart" id="histChart" preserveAspectRatio="none" aria-hidden="true"></svg>
+      <div class="hist-empty" id="histEmpty" style="display:none">Log a few days to see your trends here.</div>
     </div>
   </div>
 
@@ -549,7 +645,120 @@ html, body {
       document.getElementById('totalCals').textContent = totalCals.toLocaleString();
       document.getElementById('totalProt').textContent = totalProt + 'g';
     }
+
+    renderHistory();
   }
+
+  // ---- History / trends ----
+  let histRange  = 7;          // 7 or 30 days
+  let histMetric = 'calories'; // 'calories' or 'protein'
+
+  function loadHistoryRaw() {
+    try { return JSON.parse(localStorage.getItem(HIST_KEY)) || []; } catch { return []; }
+  }
+  function ymd(d) {
+    return d.getFullYear() + '-' +
+      String(d.getMonth()+1).padStart(2,'0') + '-' +
+      String(d.getDate()).padStart(2,'0');
+  }
+  function getSeries(days) {
+    const map = {};
+    loadHistoryRaw().forEach(h => { map[h.date] = { calories: h.calories || 0, protein: h.protein || 0, has: true }; });
+    // Fold in today's live totals as the latest point
+    const tCal  = (log.entries || []).reduce((s, e) => s + (e.calories || 0), 0);
+    const tProt = (log.entries || []).reduce((s, e) => s + (e.protein  || 0), 0);
+    if (tCal > 0 || tProt > 0) map[todayStr()] = { calories: tCal, protein: tProt, has: true };
+    const out = [];
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const key = ymd(d);
+      const rec = map[key] || { calories: 0, protein: 0, has: false };
+      out.push({ date: key, dayObj: d, calories: rec.calories, protein: rec.protein, has: rec.has });
+    }
+    return out;
+  }
+  function renderHistory() {
+    const calGoal  = goals.calories || 2000;
+    const protGoal = goals.protein  || 150;
+    const series   = getSeries(histRange);
+
+    // Yesterday
+    const yd = new Date(); yd.setDate(yd.getDate() - 1);
+    const yRec = loadHistoryRaw().find(h => h.date === ymd(yd));
+    document.getElementById('histYestCal').textContent  = yRec ? yRec.calories.toLocaleString() + ' kcal' : 'No data';
+    document.getElementById('histYestProt').textContent = yRec ? yRec.protein + 'g protein' : '';
+
+    // Average over logged days in window
+    const withData = series.filter(s => s.has && (s.calories > 0 || s.protein > 0));
+    document.getElementById('histAvgLabel').textContent = histRange + '-day avg';
+    if (withData.length) {
+      const avgCal  = Math.round(withData.reduce((s, x) => s + x.calories, 0) / withData.length);
+      const avgProt = Math.round(withData.reduce((s, x) => s + x.protein,  0) / withData.length);
+      document.getElementById('histAvgCal').textContent  = avgCal.toLocaleString() + ' kcal';
+      document.getElementById('histAvgProt').textContent = avgProt + 'g protein';
+    } else {
+      document.getElementById('histAvgCal').textContent  = '—';
+      document.getElementById('histAvgProt').textContent = '';
+    }
+
+    // Best protein day
+    const best = withData.slice().sort((a, b) => b.protein - a.protein)[0];
+    if (best && best.protein > 0) {
+      document.getElementById('histBestProt').textContent = best.protein + 'g';
+      document.getElementById('histBestDate').textContent = best.dayObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    } else {
+      document.getElementById('histBestProt').textContent = '—';
+      document.getElementById('histBestDate').textContent = '';
+    }
+
+    drawHistChart(series, histMetric === 'calories' ? calGoal : protGoal);
+  }
+  function drawHistChart(series, goal) {
+    const svg   = document.getElementById('histChart');
+    const empty = document.getElementById('histEmpty');
+    const hasAny = series.some(s => s.calories > 0 || s.protein > 0);
+    if (!hasAny) { svg.innerHTML = ''; svg.style.display = 'none'; empty.style.display = 'block'; return; }
+    svg.style.display = 'block'; empty.style.display = 'none';
+
+    const W = 600, H = 130, padB = 16, padT = 8;
+    const metric = histMetric;
+    const vals = series.map(s => s[metric]);
+    const maxVal = (Math.max(goal, ...vals) * 1.1) || 1;
+    const n = series.length;
+    const gap = n > 14 ? 1.5 : 4;
+    const bw = (W - gap * (n - 1)) / n;
+    const color = metric === 'calories' ? '#fbbf24' : '#6ee7b7';
+
+    let bars = '';
+    series.forEach((s, i) => {
+      const v = s[metric];
+      const h = (v / maxVal) * (H - padB - padT);
+      const x = i * (bw + gap);
+      const yPos = H - padB - h;
+      const op = s.date === todayStr() ? 0.5 : 1;
+      bars += '<rect class="hist-bar" x="' + x.toFixed(1) + '" y="' + yPos.toFixed(1) +
+        '" width="' + bw.toFixed(1) + '" height="' + Math.max(0, h).toFixed(1) +
+        '" rx="' + Math.min(2, bw / 2).toFixed(1) + '" fill="' + color + '" fill-opacity="' + op + '"/>';
+    });
+    const gy = H - padB - (goal / maxVal) * (H - padB - padT);
+    const goalLine = '<line class="hist-goal-line" x1="0" y1="' + gy.toFixed(1) + '" x2="' + W + '" y2="' + gy.toFixed(1) + '"/>';
+    const fmt = d => d.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' });
+    const firstLbl = '<text class="hist-axis-label" x="0" y="' + (H - 4) + '">' + fmt(series[0].dayObj) + '</text>';
+    const lastLbl  = '<text class="hist-axis-label" x="' + W + '" y="' + (H - 4) + '" text-anchor="end">' + fmt(series[n - 1].dayObj) + '</text>';
+
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+    svg.innerHTML = goalLine + bars + firstLbl + lastLbl;
+  }
+  document.querySelectorAll('.hist-range-btn').forEach(b => b.addEventListener('click', () => {
+    histRange = parseInt(b.dataset.range, 10);
+    document.querySelectorAll('.hist-range-btn').forEach(x => x.classList.toggle('active', x === b));
+    renderHistory();
+  }));
+  document.querySelectorAll('.hist-metric-btn').forEach(b => b.addEventListener('click', () => {
+    histMetric = b.dataset.metric;
+    document.querySelectorAll('.hist-metric-btn').forEach(x => x.classList.toggle('active', x === b));
+    renderHistory();
+  }));
 
   function esc(s) {
     return String(s || '')
@@ -620,6 +829,7 @@ html, body {
           foodLog: log.entries,
           goals: { calories: goals.calories || 2000, protein: goals.protein || 150 },
           history: chatHistory.slice(-8),
+          foodHistory: loadHistoryRaw().slice(-30),
         }),
       });
 
