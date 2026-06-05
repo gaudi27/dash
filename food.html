@@ -313,20 +313,49 @@ html, body {
   font-family: var(--font); font-size: 13px; font-weight: 600; cursor: pointer;
 }
 
-/* ---- History / stats ---- */
+/* ---- History / stats (collapsible) ---- */
 .hist-section {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 14px; margin-bottom: 12px; overflow: hidden;
 }
-.hist-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 13px 16px 11px;
-  border-bottom: 1px solid var(--border);
+.hist-toggle {
+  width: 100%;
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px;
+  background: transparent; border: none; cursor: pointer;
+  text-align: left; font-family: var(--font);
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s;
 }
-.hist-title {
-  font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
-  text-transform: uppercase; color: var(--text-3);
+.hist-toggle:hover { background: rgba(255,255,255,0.025); }
+.hist-toggle-icon {
+  font-size: 18px; line-height: 1;
+  filter: grayscale(15%); flex-shrink: 0;
+}
+.hist-toggle-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.hist-toggle-title {
+  font-size: 13px; font-weight: 700; color: var(--text-1);
+  letter-spacing: 0.01em;
+}
+.hist-toggle-sub {
+  font-size: 11px; color: var(--text-3);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.hist-chevron {
+  flex-shrink: 0; color: var(--text-3);
+  display: inline-flex; transition: transform 0.28s cubic-bezier(0.4,0,0.2,1);
+}
+.hist-section.is-open .hist-chevron { transform: rotate(180deg); color: var(--text-1); }
+.hist-body {
+  max-height: 0; overflow: hidden;
+  transition: max-height 0.34s cubic-bezier(0.4,0,0.2,1);
+}
+.hist-section.is-open .hist-body { max-height: 640px; }
+.hist-body-inner { border-top: 1px solid var(--border); }
+.hist-range-row {
+  display: flex; justify-content: flex-end;
+  padding: 12px 16px;
 }
 .hist-range-toggle { display: flex; gap: 3px; background: rgba(255,255,255,0.04); border-radius: 8px; padding: 3px; }
 .hist-range-btn {
@@ -444,39 +473,52 @@ html, body {
     </div>
   </div>
 
-  <!-- History / trends -->
-  <div class="hist-section">
-    <div class="hist-header">
-      <span class="hist-title">History &amp; Trends</span>
-      <div class="hist-range-toggle">
-        <button class="hist-range-btn active" data-range="7">Week</button>
-        <button class="hist-range-btn" data-range="30">Month</button>
+  <!-- History / trends (collapsible) -->
+  <div class="hist-section" id="histSection">
+    <button class="hist-toggle" id="histToggle" type="button" aria-expanded="false" aria-controls="histBody">
+      <span class="hist-toggle-icon">📈</span>
+      <span class="hist-toggle-text">
+        <span class="hist-toggle-title">History &amp; Trends</span>
+        <span class="hist-toggle-sub" id="histToggleSub">Tap to view your week &amp; month</span>
+      </span>
+      <span class="hist-chevron" aria-hidden="true">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      </span>
+    </button>
+    <div class="hist-body" id="histBody">
+      <div class="hist-body-inner">
+        <div class="hist-range-row">
+          <div class="hist-range-toggle">
+            <button class="hist-range-btn active" data-range="7">Week</button>
+            <button class="hist-range-btn" data-range="30">Month</button>
+          </div>
+        </div>
+        <div class="hist-stats">
+          <div class="hist-stat">
+            <div class="hist-stat-label">Yesterday</div>
+            <div class="hist-stat-cal" id="histYestCal">—</div>
+            <div class="hist-stat-prot" id="histYestProt">—</div>
+          </div>
+          <div class="hist-stat">
+            <div class="hist-stat-label" id="histAvgLabel">7-day avg</div>
+            <div class="hist-stat-cal" id="histAvgCal">—</div>
+            <div class="hist-stat-prot" id="histAvgProt">—</div>
+          </div>
+          <div class="hist-stat">
+            <div class="hist-stat-label">Best protein</div>
+            <div class="hist-stat-cal" id="histBestProt">—</div>
+            <div class="hist-stat-prot" id="histBestDate">—</div>
+          </div>
+        </div>
+        <div class="hist-chart-wrap">
+          <div class="hist-chart-metric">
+            <button class="hist-metric-btn cal active" data-metric="calories">🔥 Calories</button>
+            <button class="hist-metric-btn" data-metric="protein">💪 Protein</button>
+          </div>
+          <svg class="hist-chart" id="histChart" preserveAspectRatio="none" aria-hidden="true"></svg>
+          <div class="hist-empty" id="histEmpty" style="display:none">Log a few days to see your trends here.</div>
+        </div>
       </div>
-    </div>
-    <div class="hist-stats">
-      <div class="hist-stat">
-        <div class="hist-stat-label">Yesterday</div>
-        <div class="hist-stat-cal" id="histYestCal">—</div>
-        <div class="hist-stat-prot" id="histYestProt">—</div>
-      </div>
-      <div class="hist-stat">
-        <div class="hist-stat-label" id="histAvgLabel">7-day avg</div>
-        <div class="hist-stat-cal" id="histAvgCal">—</div>
-        <div class="hist-stat-prot" id="histAvgProt">—</div>
-      </div>
-      <div class="hist-stat">
-        <div class="hist-stat-label">Best protein</div>
-        <div class="hist-stat-cal" id="histBestProt">—</div>
-        <div class="hist-stat-prot" id="histBestDate">—</div>
-      </div>
-    </div>
-    <div class="hist-chart-wrap">
-      <div class="hist-chart-metric">
-        <button class="hist-metric-btn cal active" data-metric="calories">🔥 Calories</button>
-        <button class="hist-metric-btn" data-metric="protein">💪 Protein</button>
-      </div>
-      <svg class="hist-chart" id="histChart" preserveAspectRatio="none" aria-hidden="true"></svg>
-      <div class="hist-empty" id="histEmpty" style="display:none">Log a few days to see your trends here.</div>
     </div>
   </div>
 
@@ -711,6 +753,19 @@ html, body {
       document.getElementById('histBestDate').textContent = '';
     }
 
+    // Collapsed-state preview line
+    const subEl = document.getElementById('histToggleSub');
+    if (subEl) {
+      if (yRec) {
+        subEl.textContent = 'Yesterday: ' + yRec.calories.toLocaleString() + ' kcal · ' + yRec.protein + 'g protein';
+      } else if (withData.length) {
+        const a = Math.round(withData.reduce((s, x) => s + x.calories, 0) / withData.length);
+        subEl.textContent = histRange + '-day avg: ' + a.toLocaleString() + ' kcal/day';
+      } else {
+        subEl.textContent = 'Tap to view your week & month';
+      }
+    }
+
     drawHistChart(series, histMetric === 'calories' ? calGoal : protGoal);
   }
   function drawHistChart(series, goal) {
@@ -759,6 +814,17 @@ html, body {
     document.querySelectorAll('.hist-metric-btn').forEach(x => x.classList.toggle('active', x === b));
     renderHistory();
   }));
+
+  // Collapsible toggle — starts collapsed, taps open/close with a smooth slide.
+  const histToggleBtn = document.getElementById('histToggle');
+  const histSectionEl = document.getElementById('histSection');
+  if (histToggleBtn && histSectionEl) {
+    histToggleBtn.addEventListener('click', () => {
+      const open = histSectionEl.classList.toggle('is-open');
+      histToggleBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (open) renderHistory(); // make sure the chart is freshly drawn when revealed
+    });
+  }
 
   function esc(s) {
     return String(s || '')
