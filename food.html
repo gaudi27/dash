@@ -379,7 +379,7 @@ html, body {
 .hist-stat-cal { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .hist-stat-prot { font-size: 11px; color: var(--good); font-variant-numeric: tabular-nums; margin-top: 2px; }
 
-.hist-chart-wrap { padding: 14px 14px 8px; }
+.hist-chart-wrap { padding: 14px 14px 8px; position: relative; }
 .hist-chart-metric {
   display: flex; gap: 4px; margin-bottom: 12px;
 }
@@ -396,10 +396,37 @@ html, body {
   background: rgba(251,191,36,0.10); border-color: rgba(251,191,36,0.25); color: var(--warn);
 }
 .hist-chart { width: 100%; height: 130px; display: block; overflow: visible; }
-.hist-bar { transition: height 0.3s ease, y 0.3s ease; }
+.hist-bar { transition: opacity 0.15s ease; }
+.hist-bar.active { fill-opacity: 1 !important; }
+.hist-bar-hit { fill: transparent; cursor: pointer; }
 .hist-goal-line { stroke: rgba(255,255,255,0.25); stroke-width: 1; stroke-dasharray: 3 3; }
 .hist-axis-label { fill: var(--text-4); font-size: 8px; font-family: var(--font-mono); }
 .hist-empty { padding: 26px 16px; text-align: center; font-size: 12.5px; color: var(--text-3); font-style: italic; }
+.hist-tooltip {
+  position: absolute; z-index: 6; pointer-events: none;
+  background: rgba(18,18,20,0.97);
+  border: 1px solid var(--border-strong);
+  border-radius: 9px; padding: 7px 10px;
+  font-size: 11.5px; line-height: 1.35; white-space: nowrap;
+  color: var(--text-1); font-variant-numeric: tabular-nums;
+  transform: translate(-50%, -100%);
+  opacity: 0; transition: opacity 0.12s ease;
+  box-shadow: 0 8px 22px rgba(0,0,0,0.5);
+}
+.hist-tooltip.show { opacity: 1; }
+.hist-tooltip::after {
+  content: ''; position: absolute; left: 50%; bottom: -5px;
+  width: 9px; height: 9px; background: rgba(18,18,20,0.97);
+  border-right: 1px solid var(--border-strong); border-bottom: 1px solid var(--border-strong);
+  transform: translateX(-50%) rotate(45deg);
+}
+.hist-tooltip-date {
+  font-size: 9.5px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-3); margin-bottom: 3px;
+}
+.hist-tooltip .t-cal  { color: var(--warn); font-weight: 700; }
+.hist-tooltip .t-prot { color: var(--good); font-weight: 700; }
+.hist-tooltip .t-sep  { color: var(--text-4); margin: 0 4px; }
 
 @media (max-width: 480px) {
   .shell { padding-left: 12px; padding-right: 12px; }
@@ -516,6 +543,7 @@ html, body {
             <button class="hist-metric-btn" data-metric="protein">💪 Protein</button>
           </div>
           <svg class="hist-chart" id="histChart" preserveAspectRatio="none" aria-hidden="true"></svg>
+          <div class="hist-tooltip" id="histTooltip"></div>
           <div class="hist-empty" id="histEmpty" style="display:none">Log a few days to see your trends here.</div>
         </div>
       </div>
@@ -877,16 +905,19 @@ html, body {
     const bw = (W - gap * (n - 1)) / n;
     const color = metric === 'calories' ? '#fbbf24' : '#6ee7b7';
 
-    let bars = '';
+    const slot = W / n; // full column width incl. gap — used for the tap/hover hit area
+    let bars = '', hits = '';
     series.forEach((s, i) => {
       const v = s[metric];
       const h = (v / maxVal) * (H - padB - padT);
       const x = i * (bw + gap);
       const yPos = H - padB - h;
       const op = s.date === todayStr() ? 0.5 : 1;
-      bars += '<rect class="hist-bar" x="' + x.toFixed(1) + '" y="' + yPos.toFixed(1) +
+      bars += '<rect class="hist-bar" data-bar="' + i + '" x="' + x.toFixed(1) + '" y="' + yPos.toFixed(1) +
         '" width="' + bw.toFixed(1) + '" height="' + Math.max(0, h).toFixed(1) +
         '" rx="' + Math.min(2, bw / 2).toFixed(1) + '" fill="' + color + '" fill-opacity="' + op + '"/>';
+      hits += '<rect class="hist-bar-hit" data-i="' + i + '" x="' + (i * slot).toFixed(1) +
+        '" y="0" width="' + slot.toFixed(1) + '" height="' + H + '"/>';
     });
     const gy = H - padB - (goal / maxVal) * (H - padB - padT);
     const goalLine = '<line class="hist-goal-line" x1="0" y1="' + gy.toFixed(1) + '" x2="' + W + '" y2="' + gy.toFixed(1) + '"/>';
@@ -895,8 +926,65 @@ html, body {
     const lastLbl  = '<text class="hist-axis-label" x="' + W + '" y="' + (H - 4) + '" text-anchor="end">' + fmt(series[n - 1].dayObj) + '</text>';
 
     svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
-    svg.innerHTML = goalLine + bars + firstLbl + lastLbl;
+    svg.innerHTML = goalLine + bars + firstLbl + lastLbl + hits; // hits last so they sit on top
+    histSeriesCache = series; // for the tooltip
+    hideHistTip();
   }
+
+  // ---- Chart tooltips (hover on desktop, tap on mobile) ----
+  let histSeriesCache = [];
+  function hideHistTip() {
+    const tip = document.getElementById('histTooltip');
+    if (tip) tip.classList.remove('show');
+    document.querySelectorAll('#histChart .hist-bar.active').forEach(b => b.classList.remove('active'));
+  }
+  function showHistTip(i) {
+    const s = histSeriesCache[i];
+    const tip = document.getElementById('histTooltip');
+    const svg = document.getElementById('histChart');
+    const wrap = document.querySelector('.hist-chart-wrap');
+    if (!s || !tip || !svg || !wrap) return;
+
+    svg.querySelectorAll('.hist-bar.active').forEach(b => b.classList.remove('active'));
+    const bar = svg.querySelector('.hist-bar[data-bar="' + i + '"]');
+    if (bar) bar.classList.add('active');
+
+    const dateLbl = s.dayObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    tip.innerHTML =
+      '<div class="hist-tooltip-date">' + dateLbl + '</div>' +
+      '<span class="t-cal">' + Math.round(s.calories).toLocaleString() + ' kcal</span>' +
+      '<span class="t-sep">·</span>' +
+      '<span class="t-prot">' + Math.round(s.protein) + 'g protein</span>';
+
+    const wrapRect = wrap.getBoundingClientRect();
+    const ref = (bar ? bar.getBoundingClientRect() : null);
+    const hit = svg.querySelector('.hist-bar-hit[data-i="' + i + '"]');
+    const colRect = hit ? hit.getBoundingClientRect() : ref;
+    const barTop = (ref && ref.height > 1) ? ref.top : (colRect ? colRect.bottom - 6 : wrapRect.top);
+    let left = (colRect.left - wrapRect.left) + colRect.width / 2;
+    left = Math.max(46, Math.min(left, wrapRect.width - 46)); // keep on-screen
+    const top = barTop - wrapRect.top - 8;
+    tip.style.left = left + 'px';
+    tip.style.top = Math.max(20, top) + 'px';
+    tip.classList.add('show');
+  }
+  (function wireHistTooltip() {
+    const svg = document.getElementById('histChart');
+    if (!svg) return;
+    svg.addEventListener('pointermove', e => {
+      if (e.pointerType === 'touch') return; // touch uses click instead
+      const hit = e.target && e.target.closest && e.target.closest('.hist-bar-hit');
+      if (hit) showHistTip(parseInt(hit.dataset.i, 10)); else hideHistTip();
+    });
+    svg.addEventListener('pointerleave', e => { if (e.pointerType !== 'touch') hideHistTip(); });
+    svg.addEventListener('click', e => {
+      const hit = e.target && e.target.closest && e.target.closest('.hist-bar-hit');
+      if (hit) { showHistTip(parseInt(hit.dataset.i, 10)); e.stopPropagation(); }
+    });
+    document.addEventListener('click', e => {
+      if (!(e.target.closest && e.target.closest('.hist-chart-wrap'))) hideHistTip();
+    });
+  })();
   document.querySelectorAll('.hist-range-btn').forEach(b => b.addEventListener('click', () => {
     histRange = parseInt(b.dataset.range, 10);
     document.querySelectorAll('.hist-range-btn').forEach(x => x.classList.toggle('active', x === b));
