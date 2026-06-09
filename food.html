@@ -595,25 +595,75 @@ html, body {
       String(d.getDate()).padStart(2,'0');
   }
   function loadLog() {
-    try {
-      const raw = JSON.parse(localStorage.getItem(LOG_KEY));
-      if (!raw) return { date: todayStr(), entries: [] };
-      if (raw.date !== todayStr()) { saveToHistory(raw); return { date: todayStr(), entries: [] }; }
-      return raw;
-    } catch { return { date: todayStr(), entries: [] }; }
+    let raw = null;
+    try { raw = JSON.parse(localStorage.getItem(LOG_KEY)); } catch {}
+    if (!raw || typeof raw !== 'object') {
+      const fresh = { date: todayStr(), entries: [] };
+      try { localStorage.setItem(LOG_KEY, JSON.stringify(fresh)); } catch {}
+      return fresh;
+    }
+    if (raw.date !== todayStr()) {
+      // New day: archive yesterday into history AND persist the reset immediately,
+      // so a stale food_log_v1 can't linger and re-trigger archiving / racing with sync.
+      saveToHistory(raw);
+      const fresh = { date: todayStr(), entries: [] };
+      try { localStorage.setItem(LOG_KEY, JSON.stringify(fresh)); } catch {}
+      return fresh;
+    }
+    return raw;
   }
-  function saveLog() { localStorage.setItem(LOG_KEY, JSON.stringify(log)); }
+  function saveLog() {
+    log.updatedAt = Date.now(); // recency stamp so cross-device merge keeps the newest edit
+    localStorage.setItem(LOG_KEY, JSON.stringify(log));
+  }
   function saveToHistory(logObj) {
     if (!logObj.entries || !logObj.entries.length) return;
     const cals = logObj.entries.reduce((s, e) => s + (e.calories || 0), 0);
     const prot = logObj.entries.reduce((s, e) => s + (e.protein  || 0), 0);
     let hist = [];
     try { hist = JSON.parse(localStorage.getItem(HIST_KEY)) || []; } catch {}
-    hist = hist.filter(h => h.date !== logObj.date);
-    hist.push({ date: logObj.date, calories: cals, protein: prot });
+    const existing = hist.find(h => h && h.date === logObj.date);
+    if (existing) {
+      // Never shrink a day's record (a partial/stale archive must not overwrite a fuller one).
+      existing.calories = Math.max(existing.calories || 0, cals);
+      existing.protein  = Math.max(existing.protein  || 0, prot);
+    } else {
+      hist.push({ date: logObj.date, calories: cals, protein: prot });
+    }
     if (hist.length > 30) hist = hist.slice(-30);
     localStorage.setItem(HIST_KEY, JSON.stringify(hist));
   }
+  // Merge functions for cloud sync — exposed so initCloudSync never blindly clobbers these.
+  function mergeFoodHistory(local, remote) {
+    const byDate = {};
+    (Array.isArray(local) ? local : []).forEach(h => {
+      if (h && h.date) byDate[h.date] = { date: h.date, calories: h.calories || 0, protein: h.protein || 0 };
+    });
+    (Array.isArray(remote) ? remote : []).forEach(h => {
+      if (!h || !h.date) return;
+      const ex = byDate[h.date];
+      if (!ex) byDate[h.date] = { date: h.date, calories: h.calories || 0, protein: h.protein || 0 };
+      else { ex.calories = Math.max(ex.calories, h.calories || 0); ex.protein = Math.max(ex.protein, h.protein || 0); }
+    });
+    return Object.keys(byDate).sort().map(d => byDate[d]).slice(-30);
+  }
+  function mergeFoodLog(local, remote) {
+    const today = todayStr();
+    const ok = x => x && typeof x === 'object';
+    if (!ok(local) && !ok(remote)) return { date: today, entries: [] };
+    if (!ok(local)) return remote;
+    if (!ok(remote)) return local;
+    const lT = local.date === today, rT = remote.date === today;
+    if (lT && !rT) return local;          // keep today's log over a stale day
+    if (rT && !lT) return remote;
+    if (!lT && !rT) return (String(local.date) >= String(remote.date)) ? local : remote;
+    // Both are today's log → newest edit wins (so deletes AND adds propagate, and a
+    // stale remote can't overwrite a fresher local).
+    const lu = Number(local.updatedAt) || 0, ru = Number(remote.updatedAt) || 0;
+    if (lu !== ru) return lu > ru ? local : remote;
+    return (local.entries || []).length >= (remote.entries || []).length ? local : remote;
+  }
+  window.__foodMergeFns = { food_log_v1: mergeFoodLog, food_history_v1: mergeFoodHistory };
 
   let goals = loadGoals();
   let log   = loadLog();
@@ -1040,6 +1090,7 @@ document.addEventListener('DOMContentLoaded', function () {
   initCloudSync({
     appKey: 'food',
     syncedKeys: ['food_log_v1', 'food_goals_v1', 'food_history_v1'],
+    merge: window.__foodMergeFns || {},
     onApplied: function () {
       if (typeof window.__foodSyncApplied === 'function') window.__foodSyncApplied();
       window.dispatchEvent(new Event('storage'));

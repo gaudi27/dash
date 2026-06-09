@@ -13,6 +13,10 @@
     const syncedKeys = (config && config.syncedKeys) || [];
     const syncedPrefixes = (config && config.syncedPrefixes) || [];
     const onApplied = config && config.onApplied;
+    // Optional per-key merge functions: { 'someKey': (localValue, remoteValue) => mergedValue }.
+    // Keys listed here are NEVER blindly overwritten or deleted by a remote pull — the merge
+    // result is kept and pushed back, so concurrent/stale devices can't destroy local data.
+    const mergeFns = (config && config.merge) || {};
     if (!appKey || !window.supabase) return;
     if (!SUPABASE_URL || !SUPABASE_KEY) return;
     if (SUPABASE_URL.indexOf('PASTE-') === 0 || SUPABASE_KEY.indexOf('PASTE-') === 0) return;
@@ -58,18 +62,31 @@
       if (!remote || typeof remote !== 'object') return false;
       suppressSync = true;
       let changed = false;
+      let diverged = false; // a merge produced something different from remote → push the union back
       try {
         for (const k of Object.keys(remote)) {
           if (!matches(k)) continue;
-          const incoming = JSON.stringify(remote[k]);
+          let value = remote[k];
+          if (mergeFns[k]) {
+            let localVal = null;
+            try { const lv = localStorage.getItem(k); localVal = lv == null ? null : JSON.parse(lv); } catch (e) {}
+            try { value = mergeFns[k](localVal, remote[k]); } catch (e) { value = remote[k]; }
+            if (JSON.stringify(value) !== JSON.stringify(remote[k])) diverged = true;
+          }
+          const incoming = JSON.stringify(value);
           const local = localStorage.getItem(k);
           if (local !== incoming) { try { origSet(k, incoming); changed = true; } catch (e) {} }
         }
         for (const k of listAllKeys()) {
-          if (!(k in remote)) { try { origRemove(k); changed = true; } catch (e) {} }
+          if (k in remote) continue;
+          // Merge keys present locally but missing from remote are kept (and pushed up),
+          // never deleted — this is what stops a stale remote from wiping local history.
+          if (mergeFns[k]) { diverged = true; continue; }
+          try { origRemove(k); changed = true; } catch (e) {}
         }
       } finally { suppressSync = false; }
       if (changed && typeof onApplied === 'function') { try { onApplied(); } catch (e) {} }
+      if (diverged) schedulePush();
       return changed;
     }
     async function pushNow() {
