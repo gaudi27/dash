@@ -624,27 +624,70 @@ html, body {
     try { hist = JSON.parse(localStorage.getItem(HIST_KEY)) || []; } catch {}
     const existing = hist.find(h => h && h.date === logObj.date);
     if (existing) {
-      // Never shrink a day's record (a partial/stale archive must not overwrite a fuller one).
-      existing.calories = Math.max(existing.calories || 0, cals);
-      existing.protein  = Math.max(existing.protein  || 0, prot);
+      // Keep the fuller record (protects against a partial/stale archive); store
+      // the item detail so meals can be recalled later.
+      if (logObj.entries.length >= ((existing.entries || []).length)) {
+        existing.entries  = logObj.entries.slice();
+        existing.calories = cals;
+        existing.protein  = prot;
+        existing.updatedAt = Date.now();
+      }
     } else {
-      hist.push({ date: logObj.date, calories: cals, protein: prot });
+      hist.push({ date: logObj.date, calories: cals, protein: prot, entries: logObj.entries.slice(), updatedAt: Date.now() });
     }
     if (hist.length > 30) hist = hist.slice(-30);
     localStorage.setItem(HIST_KEY, JSON.stringify(hist));
   }
+
+  // Add food to ANY day (today's live log, or a past day's history record).
+  // Used by the AI assistant to correct a previous day or repeat a past meal.
+  function applyEntriesToDate(dateStr, newEntries) {
+    const mk = e => ({
+      id: Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+      name: String(e.name || 'Unknown'),
+      calories: Math.round(e.calories || 0),
+      protein:  Math.round(e.protein  || 0),
+    });
+    if (!dateStr || dateStr === todayStr()) {
+      newEntries.forEach(e => log.entries.push(Object.assign(mk(e), { time: new Date().toISOString() })));
+      saveLog();
+      return;
+    }
+    let hist = [];
+    try { hist = JSON.parse(localStorage.getItem(HIST_KEY)) || []; } catch {}
+    let rec = hist.find(h => h && h.date === dateStr);
+    if (!rec) { rec = { date: dateStr, calories: 0, protein: 0, entries: [] }; hist.push(rec); }
+    // Legacy record with totals but no item detail → preserve the prior total as one line.
+    if (!Array.isArray(rec.entries) || !rec.entries.length) {
+      rec.entries = [];
+      if ((rec.calories || 0) > 0 || (rec.protein || 0) > 0) {
+        rec.entries.push({ id: 'prev_' + dateStr, name: 'Previously logged', calories: Math.round(rec.calories || 0), protein: Math.round(rec.protein || 0) });
+      }
+    }
+    newEntries.forEach(e => rec.entries.push(mk(e)));
+    rec.calories = rec.entries.reduce((s, e) => s + (e.calories || 0), 0);
+    rec.protein  = rec.entries.reduce((s, e) => s + (e.protein  || 0), 0);
+    rec.updatedAt = Date.now();
+    hist.sort((a, b) => (a.date < b.date ? -1 : 1));
+    if (hist.length > 30) hist = hist.slice(-30);
+    localStorage.setItem(HIST_KEY, JSON.stringify(hist));
+  }
+
   // Merge functions for cloud sync — exposed so initCloudSync never blindly clobbers these.
   function mergeFoodHistory(local, remote) {
     const byDate = {};
-    (Array.isArray(local) ? local : []).forEach(h => {
-      if (h && h.date) byDate[h.date] = { date: h.date, calories: h.calories || 0, protein: h.protein || 0 };
-    });
-    (Array.isArray(remote) ? remote : []).forEach(h => {
+    function take(h) {
       if (!h || !h.date) return;
       const ex = byDate[h.date];
-      if (!ex) byDate[h.date] = { date: h.date, calories: h.calories || 0, protein: h.protein || 0 };
-      else { ex.calories = Math.max(ex.calories, h.calories || 0); ex.protein = Math.max(ex.protein, h.protein || 0); }
-    });
+      if (!ex) { byDate[h.date] = h; return; }
+      const eu = Number(ex.updatedAt) || 0, hu = Number(h.updatedAt) || 0;
+      if (hu !== eu) { if (hu > eu) byDate[h.date] = h; return; } // newest edit wins
+      const exc = (ex.entries || []).length, hc = (h.entries || []).length;
+      if (hc !== exc) { if (hc > exc) byDate[h.date] = h; return; }
+      if ((h.calories || 0) > (ex.calories || 0)) byDate[h.date] = h;
+    }
+    (Array.isArray(local) ? local : []).forEach(take);
+    (Array.isArray(remote) ? remote : []).forEach(take);
     return Object.keys(byDate).sort().map(d => byDate[d]).slice(-30);
   }
   function mergeFoodLog(local, remote) {
@@ -945,7 +988,8 @@ html, body {
           foodLog: log.entries,
           goals: { calories: goals.calories || 2000, protein: goals.protein || 150 },
           history: chatHistory.slice(-8),
-          foodHistory: loadHistoryRaw().slice(-30),
+          foodHistory: loadHistoryRaw().slice(-14), // includes each day's individual meals
+          today: todayStr(),
         }),
       });
 
@@ -958,16 +1002,9 @@ html, body {
       }
 
       if (data.entries && data.entries.length) {
-        data.entries.forEach(e => {
-          log.entries.push({
-            id: Date.now() + Math.random(),
-            name: String(e.name || 'Unknown'),
-            calories: Math.round(e.calories || 0),
-            protein:  Math.round(e.protein  || 0),
-            time: new Date().toISOString(),
-          });
-        });
-        saveLog(); render();
+        // data.date tells us which day to apply to (today's live log, or a past day).
+        applyEntriesToDate(data.date, data.entries);
+        render();
       }
 
       const reply = data.reply || 'Got it!';
