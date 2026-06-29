@@ -164,14 +164,14 @@ body.topbar-modal-open { overflow: hidden; touch-action: none; }
 
   const bottombarHtml = `
 <nav class="bottombar" id="bottombar" role="navigation" aria-label="Main tabs">
-  <a href="index.html" class="bottombar-tab" data-page="main">
-    <span class="bottombar-tab-icon">🏠</span><span>Main</span>
+  <a href="food.html" class="bottombar-tab" data-page="food">
+    <span class="bottombar-tab-icon">🍎</span><span>Food</span>
+  </a>
+  <a href="meals.html" class="bottombar-tab" data-page="meals">
+    <span class="bottombar-tab-icon">🍽️</span><span>Meals</span>
   </a>
   <a href="health.html" class="bottombar-tab" data-page="health">
     <span class="bottombar-tab-icon">💊</span><span>Health</span>
-  </a>
-  <a href="food.html" class="bottombar-tab" data-page="food">
-    <span class="bottombar-tab-icon">🍎</span><span>Food</span>
   </a>
   <a href="gym.html" class="bottombar-tab" data-page="fitness">
     <span class="bottombar-tab-icon">💪</span><span>Fitness</span>
@@ -189,9 +189,9 @@ body.topbar-modal-open { overflow: hidden; touch-action: none; }
   function currentPageKey() {
     const p = (window.location.pathname || '').toLowerCase();
     if (p.endsWith('health.html')) return 'health';
-    if (p.endsWith('food.html'))   return 'food';
+    if (p.endsWith('meals.html'))  return 'meals';
     if (p.endsWith('gym.html'))    return 'fitness';
-    return 'main';
+    return 'food'; // food is the home/default page
   }
 
   function injectStyleAndHTML() {
