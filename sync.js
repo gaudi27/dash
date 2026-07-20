@@ -91,7 +91,34 @@
     }
     async function pushNow() {
       if (!supa) return;
-      const state = collect();
+      let state = collect();
+      // Read-merge-write: for keys with a merge function, pull the LATEST remote first
+      // and merge it into what we're about to write. This guarantees a push can only add
+      // to / update the union — it can never delete data another device wrote that this
+      // client hasn't merged yet (the root cause of "opening my computer deleted phone logs").
+      if (Object.keys(mergeFns).length) {
+        try {
+          const { data, error } = await supa.from('app_state').select('data').eq('key', appKey).maybeSingle();
+          if (!error && data && data.data) {
+            const remote = data.data;
+            let localChanged = false;
+            suppressSync = true;
+            try {
+              for (const k of Object.keys(mergeFns)) {
+                const lv = (k in state)  ? state[k]  : null;
+                const rv = (k in remote) ? remote[k] : null;
+                if (lv === null && rv === null) continue;
+                let merged;
+                try { merged = mergeFns[k](lv, rv); } catch (e) { merged = (lv != null ? lv : rv); }
+                state[k] = merged;
+                const mergedStr = JSON.stringify(merged);
+                if (localStorage.getItem(k) !== mergedStr) { try { origSet(k, mergedStr); localChanged = true; } catch (e) {} }
+              }
+            } finally { suppressSync = false; }
+            if (localChanged && typeof onApplied === 'function') { try { onApplied(); } catch (e) {} }
+          }
+        } catch (e) { /* read failed — fall through and push local as-is */ }
+      }
       const json = JSON.stringify(state);
       if (json === lastSyncedJson) return;
       try {
@@ -113,6 +140,10 @@
     }
     function schedulePush() { clearTimeout(pushTimer); pushTimer = setTimeout(pushNow, 250); }
     function flushOnUnload() {
+      // For merge-enabled pages (e.g. food), never do a raw blind POST before we've
+      // completed at least one pull+merge this session — otherwise unloading right after
+      // load could overwrite the cloud with a not-yet-merged local state.
+      if (Object.keys(mergeFns).length && lastSyncedJson === null) return;
       const state = collect();
       const json = JSON.stringify(state);
       if (json === lastSyncedJson) return;
@@ -135,13 +166,22 @@
       supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       try {
         const { data, error } = await supa.from('app_state').select('data').eq('key', appKey).maybeSingle();
-        if (!error && data && data.data && Object.keys(data.data).length > 0) {
+        if (error) {
+          // Pull failed — do NOT push. Pushing our local now could clobber good remote
+          // data. The poll + visibility handlers will retry shortly.
+          window.__syncStatus = { dir: 'pull', ok: false, at: Date.now(), appKey: appKey, error: error.message || JSON.stringify(error) };
+          console.error('[sync] initial pull failed for "' + appKey + '":', error);
+        } else if (data && data.data && Object.keys(data.data).length > 0) {
           lastSyncedJson = JSON.stringify(data.data);
           applyRemote(data.data);
         } else if (Object.keys(collect()).length > 0) {
+          // Remote genuinely empty — safe to seed it from local (pushNow re-checks/merges).
           schedulePush();
         }
-      } catch (e) {}
+      } catch (e) {
+        // Network error — do NOT push (same clobber risk as above).
+        console.error('[sync] initial pull threw for "' + appKey + '":', e);
+      }
       supa.channel('app_state_' + appKey)
         .on('postgres_changes', {
           event: '*', schema: 'public', table: 'app_state', filter: 'key=eq.' + appKey,
