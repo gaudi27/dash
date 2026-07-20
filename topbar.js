@@ -71,6 +71,9 @@ body.topbar-modal-open { overflow: hidden; touch-action: none; }
 
   const bottombarHtml = `
 <nav class="bottombar" id="bottombar" role="navigation" aria-label="Main tabs">
+  <a href="budget.html" class="bottombar-tab" data-page="budget">
+    <span class="bottombar-tab-icon">💰</span><span>Budget</span>
+  </a>
   <a href="food.html" class="bottombar-tab" data-page="food">
     <span class="bottombar-tab-icon">🍎</span><span>Food</span>
   </a>
@@ -87,8 +90,9 @@ body.topbar-modal-open { overflow: hidden; touch-action: none; }
   }
   function currentPageKey() {
     const p = (window.location.pathname || '').toLowerCase();
-    if (p.endsWith('meals.html')) return 'meals';
-    if (p.endsWith('gym.html'))   return 'fitness';
+    if (p.endsWith('budget.html')) return 'budget';
+    if (p.endsWith('meals.html'))  return 'meals';
+    if (p.endsWith('gym.html'))    return 'fitness';
     return 'food'; // food is the home/default page
   }
 

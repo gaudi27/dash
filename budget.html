@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0b">
+<title>Budget</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="sync.js" defer></script>
+<script src="topbar.js" defer></script>
+<style>
+:root {
+  --bg: #0a0a0b;
+  --bg-card: #111113;
+  --text-1: #ffffff;
+  --text-2: rgba(255,255,255,0.6);
+  --text-3: rgba(255,255,255,0.4);
+  --text-4: rgba(255,255,255,0.18);
+  --border: rgba(255,255,255,0.06);
+  --border-strong: rgba(255,255,255,0.14);
+  --good: #6ee7b7;
+  --warn: #fbbf24;
+  --bad: #ff8a8a;
+  --accent: #f9a8d4;
+  --font: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, SF Mono, Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, #14141a 0%, #0a0a0b 60%);
+  color: var(--text-1);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+.shell { max-width: 680px; margin: 0 auto; padding: 0 16px calc(90px + env(safe-area-inset-bottom)); }
+
+/* Header */
+.bd-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: max(18px, env(safe-area-inset-top)) 0 12px;
+}
+.bd-title { font-size: 22px; font-weight: 700; letter-spacing: -0.015em; }
+.bd-sub { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+.bd-gear {
+  width: 36px; height: 36px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+  border-radius: 10px; cursor: pointer; color: var(--text-2);
+  -webkit-tap-highlight-color: transparent; transition: background 0.15s, color 0.15s;
+}
+.bd-gear:hover { background: rgba(255,255,255,0.08); color: var(--text-1); }
+
+/* Week nav */
+.bd-weeknav {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; margin-bottom: 12px;
+}
+.bd-week-btn {
+  width: 38px; height: 38px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+  border-radius: 10px; color: var(--text-2); cursor: pointer;
+  -webkit-tap-highlight-color: transparent; transition: background 0.15s, color 0.15s;
+}
+.bd-week-btn:hover { background: rgba(255,255,255,0.08); color: var(--text-1); }
+.bd-week-label { flex: 1; text-align: center; }
+.bd-week-range { font-size: 14px; font-weight: 700; }
+.bd-week-tag {
+  font-size: 9.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--accent); margin-top: 2px;
+}
+.bd-week-tag.past { color: var(--text-4); }
+
+/* Main summary card */
+.bd-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 16px; padding: 20px; margin-bottom: 12px;
+}
+.bd-remaining-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--text-3); margin-bottom: 6px;
+}
+.bd-remaining-num {
+  font-size: 40px; font-weight: 700; letter-spacing: -0.02em; line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.bd-remaining-of { font-size: 13px; color: var(--text-3); margin-top: 6px; font-variant-numeric: tabular-nums; }
+.bd-bar-bg { height: 7px; background: rgba(255,255,255,0.07); border-radius: 4px; overflow: hidden; margin-top: 14px; }
+.bd-bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s cubic-bezier(0.4,0,0.2,1), background 0.3s; }
+.bd-stats { display: flex; gap: 10px; margin-top: 16px; }
+.bd-stat {
+  flex: 1; background: rgba(255,255,255,0.025); border: 1px solid var(--border);
+  border-radius: 12px; padding: 12px 14px;
+}
+.bd-stat-label { font-size: 9.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-4); margin-bottom: 5px; }
+.bd-stat-val { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.bd-stat-val.pos { color: var(--good); }
+.bd-stat-val.neg { color: var(--bad); }
+.bd-stat-sub { font-size: 10.5px; color: var(--text-3); margin-top: 2px; }
+
+/* Add row */
+.bd-add-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 14px 16px; margin-bottom: 12px; }
+.bd-add-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); margin-bottom: 10px; }
+.bd-add-row { display: flex; gap: 8px; }
+.bd-input {
+  padding: 11px 13px; background: rgba(0,0,0,0.28); border: 1px solid var(--border);
+  color: var(--text-1); border-radius: 10px; font-family: var(--font); font-size: 15px;
+  outline: none; -webkit-appearance: none; min-width: 0;
+}
+.bd-input:focus { border-color: rgba(249,168,212,0.4); }
+.bd-input::placeholder { color: var(--text-3); }
+.bd-input-what { flex: 1; }
+.bd-input-amt { width: 96px; text-align: right; font-variant-numeric: tabular-nums; }
+.bd-add-btn {
+  flex-shrink: 0; padding: 0 16px; border: none; border-radius: 10px;
+  background: linear-gradient(180deg, #ffffff 0%, #e8e5dd 100%); color: #0a0a0b;
+  font-family: var(--font); font-size: 20px; font-weight: 700; cursor: pointer;
+  -webkit-tap-highlight-color: transparent; transition: transform 0.12s;
+}
+.bd-add-btn:hover { transform: translateY(-1px); }
+.bd-add-btn:active { transform: scale(0.96); }
+
+/* Purchases list */
+.bd-list-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; margin-bottom: 12px; }
+.bd-list-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 13px 16px 10px; border-bottom: 1px solid var(--border);
+}
+.bd-list-title { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); }
+.bd-list-count { font-size: 11px; color: var(--text-4); font-variant-numeric: tabular-nums; }
+.bd-empty { padding: 26px 16px; text-align: center; font-size: 13px; color: var(--text-3); font-style: italic; }
+.bd-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px; border-top: 1px solid var(--border);
+  animation: bd-in 0.18s ease;
+}
+.bd-row:first-child { border-top: none; }
+@keyframes bd-in { from { opacity: 0; transform: translateY(-3px);} to { opacity: 1; transform: none; } }
+.bd-row-what { flex: 1; min-width: 0; font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bd-row-amt { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.bd-row-del { background: none; border: none; color: var(--text-4); font-size: 17px; cursor: pointer; padding: 0 2px; line-height: 1; -webkit-tap-highlight-color: transparent; }
+.bd-row-del:hover { color: var(--bad); }
+
+/* History (collapsible) */
+.bd-hist { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; margin-bottom: 12px; }
+.bd-hist-toggle {
+  width: 100%; display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+  background: transparent; border: none; cursor: pointer; text-align: left; font-family: var(--font);
+  -webkit-tap-highlight-color: transparent; transition: background 0.15s;
+}
+.bd-hist-toggle:hover { background: rgba(255,255,255,0.025); }
+.bd-hist-icon { font-size: 18px; }
+.bd-hist-text { flex: 1; }
+.bd-hist-title { font-size: 13px; font-weight: 700; }
+.bd-hist-sub { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+.bd-chevron { color: var(--text-3); display: inline-flex; transition: transform 0.28s cubic-bezier(0.4,0,0.2,1); }
+.bd-hist.is-open .bd-chevron { transform: rotate(180deg); color: var(--text-1); }
+.bd-hist-body { max-height: 0; overflow: hidden; transition: max-height 0.34s cubic-bezier(0.4,0,0.2,1); }
+.bd-hist.is-open .bd-hist-body { max-height: 520px; overflow-y: auto; }
+.bd-hist-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; border-top: 1px solid var(--border); cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.bd-hist-row:hover { background: rgba(255,255,255,0.02); }
+.bd-hist-range { font-size: 13px; font-weight: 600; }
+.bd-hist-spent { font-size: 11px; color: var(--text-3); margin-top: 2px; font-variant-numeric: tabular-nums; }
+.bd-hist-left { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.bd-hist-left.pos { color: var(--good); }
+.bd-hist-left.neg { color: var(--bad); }
+.bd-hist-empty { padding: 20px 16px; text-align: center; font-size: 12px; color: var(--text-3); font-style: italic; }
+
+/* Settings modal */
+.bd-modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); backdrop-filter: blur(6px); z-index: 100; align-items: center; justify-content: center; padding: 24px; }
+.bd-modal-bg.show { display: flex; }
+.bd-modal { width: 100%; max-width: 380px; background: var(--bg-card); border: 1px solid var(--border-strong); border-radius: 18px; padding: 22px; }
+.bd-modal h3 { margin: 0 0 18px; font-size: 17px; font-weight: 700; }
+.bd-modal-label { display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); margin-bottom: 7px; }
+.bd-modal-input { width: 100%; padding: 11px 13px; background: rgba(0,0,0,0.28); border: 1px solid var(--border); color: var(--text-1); border-radius: 10px; font-family: var(--font); font-size: 15px; outline: none; }
+.bd-modal-actions { display: flex; gap: 8px; margin-top: 20px; }
+.bd-modal-save { flex: 1; padding: 12px; background: linear-gradient(180deg,#fff,#e8e5dd); color: #0a0a0b; border: none; border-radius: 10px; font-family: var(--font); font-size: 14px; font-weight: 700; cursor: pointer; }
+.bd-modal-cancel { flex: 1; padding: 12px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); color: var(--text-1); border-radius: 10px; font-family: var(--font); font-size: 14px; cursor: pointer; }
+
+@media (max-width: 480px) {
+  .shell { padding-left: 12px; padding-right: 12px; }
+  .bd-remaining-num { font-size: 34px; }
+  .bd-input-amt { width: 84px; }
+}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="bd-header">
+    <div>
+      <div class="bd-title">Budget</div>
+      <div class="bd-sub" id="bdSub">—</div>
+    </div>
+    <button class="bd-gear" id="bdGear" aria-label="Settings">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+  </div>
+
+  <div class="bd-weeknav">
+    <button class="bd-week-btn" id="bdPrev" aria-label="Previous week">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    </button>
+    <div class="bd-week-label">
+      <div class="bd-week-range" id="bdWeekRange">—</div>
+      <div class="bd-week-tag" id="bdWeekTag"></div>
+    </div>
+    <button class="bd-week-btn" id="bdNext" aria-label="Next week">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </button>
+  </div>
+
+  <div class="bd-card">
+    <div class="bd-remaining-label">Remaining this week</div>
+    <div class="bd-remaining-num" id="bdRemaining">$0</div>
+    <div class="bd-remaining-of" id="bdRemainingOf">$0 of $250 spent</div>
+    <div class="bd-bar-bg"><div class="bd-bar-fill" id="bdBar" style="width:0%"></div></div>
+    <div class="bd-stats">
+      <div class="bd-stat">
+        <div class="bd-stat-label">Spent</div>
+        <div class="bd-stat-val" id="bdSpent">$0</div>
+        <div class="bd-stat-sub" id="bdSpentSub">this week</div>
+      </div>
+      <div class="bd-stat">
+        <div class="bd-stat-label">Rollover saved</div>
+        <div class="bd-stat-val pos" id="bdRollover">$0</div>
+        <div class="bd-stat-sub">from past weeks</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bd-add-card">
+    <div class="bd-add-eyebrow">+ Add purchase</div>
+    <div class="bd-add-row">
+      <input class="bd-input bd-input-what" id="bdWhat" type="text" placeholder="What did you buy?" autocomplete="off">
+      <input class="bd-input bd-input-amt" id="bdAmt" type="number" inputmode="decimal" step="0.01" placeholder="$">
+      <button class="bd-add-btn" id="bdAdd" aria-label="Add">+</button>
+    </div>
+  </div>
+
+  <div class="bd-list-card">
+    <div class="bd-list-head">
+      <span class="bd-list-title">Purchases</span>
+      <span class="bd-list-count" id="bdListCount">$0</span>
+    </div>
+    <div id="bdEmpty" class="bd-empty">No purchases yet this week.</div>
+    <div id="bdList"></div>
+  </div>
+
+  <div class="bd-hist" id="bdHist">
+    <button class="bd-hist-toggle" id="bdHistToggle" type="button" aria-expanded="false">
+      <span class="bd-hist-icon">📅</span>
+      <span class="bd-hist-text">
+        <span class="bd-hist-title">Week history</span>
+        <span class="bd-hist-sub" id="bdHistSub">Tap to see past weeks</span>
+      </span>
+      <span class="bd-chevron"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+    </button>
+    <div class="bd-hist-body" id="bdHistBody">
+      <div id="bdHistList"></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="bd-modal-bg" id="bdModal">
+  <div class="bd-modal">
+    <h3>Budget settings</h3>
+    <label class="bd-modal-label">Weekly budget ($)</label>
+    <input class="bd-modal-input" id="bdWeeklyInput" type="number" inputmode="decimal" step="1" placeholder="250">
+    <div class="bd-modal-actions">
+      <button class="bd-modal-cancel" id="bdCancel">Cancel</button>
+      <button class="bd-modal-save" id="bdSave">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  const WEEKS_KEY = 'budget_weeks_v1';
+  const CFG_KEY   = 'budget_config_v1';
+  const DEFAULT_WEEKLY = 250;
+
+  // ---- storage ----
+  function loadWeeks() { try { return JSON.parse(localStorage.getItem(WEEKS_KEY)) || {}; } catch { return {}; } }
+  function saveWeeks() { localStorage.setItem(WEEKS_KEY, JSON.stringify(weeks)); }
+  function loadCfg()   { try { return JSON.parse(localStorage.getItem(CFG_KEY)) || {}; } catch { return {}; } }
+  function saveCfg()   { cfg.updatedAt = Date.now(); localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); }
+
+  let weeks = loadWeeks();
+  let cfg   = loadCfg();
+
+  function weeklyBudget() { return Number(cfg.weekly) > 0 ? Number(cfg.weekly) : DEFAULT_WEEKLY; }
+
+  // ---- week helpers (Sunday-start weeks, matching the sheet) ----
+  function weekStart(d) { const x = new Date(d); x.setHours(0,0,0,0); x.setDate(x.getDate() - x.getDay()); return x; }
+  function keyOf(d) { const x = weekStart(d); return x.getFullYear() + '-' + String(x.getMonth()+1).padStart(2,'0') + '-' + String(x.getDate()).padStart(2,'0'); }
+  function dateOfKey(k) { const [y,m,d] = k.split('-').map(Number); return new Date(y, m-1, d); }
+  function rangeLabel(k) {
+    const a = dateOfKey(k); const b = new Date(a); b.setDate(b.getDate()+6);
+    const f = (dt, withYear) => dt.toLocaleDateString('en-US', Object.assign({ month:'short', day:'numeric' }, withYear ? { year:'numeric' } : {}));
+    return f(a) + ' – ' + f(b);
+  }
+  const CUR_KEY = keyOf(new Date());
+  let selKey = CUR_KEY;
+
+  function entriesOf(k) { const w = weeks[k]; return (w && Array.isArray(w.entries)) ? w.entries : []; }
+  function spentOf(k) { return entriesOf(k).reduce((s,e)=> s + (Number(e.amount)||0), 0); }
+
+  // Rollover = sum of (weekly - spent) for every week from the first tracked week
+  // up to (but not including) the current week. Empty in-between weeks accrue the
+  // full weekly amount, exactly like the spreadsheet's spill-over.
+  function rolloverSaved() {
+    const keys = Object.keys(weeks).filter(k => entriesOf(k).length || (weeks[k] && weeks[k].entries));
+    if (!keys.length) return 0;
+    let earliest = null;
+    Object.keys(weeks).forEach(k => { const d = dateOfKey(k); if (!earliest || d < earliest) earliest = d; });
+    const cur = weekStart(new Date());
+    if (!earliest || earliest >= cur) return 0;
+    const wk = weeklyBudget();
+    let sum = 0, it = new Date(earliest);
+    while (it < cur) { sum += wk - spentOf(keyOf(it)); it.setDate(it.getDate() + 7); }
+    return sum;
+  }
+
+  function money(n, forceSign) {
+    n = Number(n) || 0;
+    const neg = n < 0;
+    const a = Math.abs(n);
+    const s = a % 1 === 0 ? a.toLocaleString() : a.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (forceSign) return (neg ? '−$' : '+$') + s;
+    return (neg ? '−$' : '$') + s;
+  }
+  function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  // ---- render ----
+  function render() {
+    const wk = weeklyBudget();
+    const spent = spentOf(selKey);
+    const remaining = wk - spent;
+    const entries = entriesOf(selKey);
+
+    document.getElementById('bdSub').textContent = 'Weekly budget ' + money(wk);
+    document.getElementById('bdWeekRange').textContent = rangeLabel(selKey);
+    const tagEl = document.getElementById('bdWeekTag');
+    if (selKey === CUR_KEY) { tagEl.textContent = 'THIS WEEK'; tagEl.classList.remove('past'); }
+    else if (selKey < CUR_KEY) { tagEl.textContent = 'PAST WEEK'; tagEl.classList.add('past'); }
+    else { tagEl.textContent = 'UPCOMING'; tagEl.classList.add('past'); }
+
+    // Remaining
+    const over = remaining < 0;
+    const low = !over && remaining <= wk * 0.2;
+    const remColor = over ? 'var(--bad)' : low ? 'var(--warn)' : 'var(--good)';
+    const remEl = document.getElementById('bdRemaining');
+    remEl.textContent = money(remaining);
+    remEl.style.color = remColor;
+    document.getElementById('bdRemainingOf').textContent = money(spent) + ' of ' + money(wk) + ' spent'
+      + (over ? ' · over budget' : '');
+
+    const pct = Math.min((spent / wk) * 100, 100);
+    document.getElementById('bdBar').style.cssText = 'width:' + pct + '%;background:' + remColor;
+
+    document.getElementById('bdSpent').textContent = money(spent);
+    document.getElementById('bdSpentSub').textContent = entries.length + ' purchase' + (entries.length === 1 ? '' : 's');
+
+    const roll = rolloverSaved();
+    const rollEl = document.getElementById('bdRollover');
+    rollEl.textContent = money(roll, false);
+    rollEl.className = 'bd-stat-val ' + (roll < 0 ? 'neg' : 'pos');
+
+    // List
+    const listEl = document.getElementById('bdList');
+    const emptyEl = document.getElementById('bdEmpty');
+    document.getElementById('bdListCount').textContent = money(spent);
+    if (!entries.length) { listEl.innerHTML = ''; emptyEl.style.display = 'block'; }
+    else {
+      emptyEl.style.display = 'none';
+      listEl.innerHTML = entries.map(e =>
+        '<div class="bd-row">' +
+          '<span class="bd-row-what">' + esc(e.what || 'Purchase') + '</span>' +
+          '<span class="bd-row-amt">' + money(e.amount) + '</span>' +
+          '<button class="bd-row-del" data-id="' + e.id + '" aria-label="Remove">×</button>' +
+        '</div>'
+      ).join('');
+    }
+
+    renderHistory();
+  }
+
+  function renderHistory() {
+    const wk = weeklyBudget();
+    const keys = Object.keys(weeks).filter(k => entriesOf(k).length).sort().reverse();
+    const sub = document.getElementById('bdHistSub');
+    const listEl = document.getElementById('bdHistList');
+    if (!keys.length) {
+      sub.textContent = 'No weeks tracked yet';
+      listEl.innerHTML = '<div class="bd-hist-empty">Add purchases and your weeks will show up here.</div>';
+      return;
+    }
+    sub.textContent = keys.length + ' week' + (keys.length === 1 ? '' : 's') + ' tracked · ' + money(rolloverSaved()) + ' saved';
+    listEl.innerHTML = keys.map(k => {
+      const spent = spentOf(k);
+      const left = wk - spent;
+      return '<div class="bd-hist-row" data-key="' + k + '">' +
+        '<div>' +
+          '<div class="bd-hist-range">' + rangeLabel(k) + (k === CUR_KEY ? ' · now' : '') + '</div>' +
+          '<div class="bd-hist-spent">' + money(spent) + ' spent of ' + money(wk) + '</div>' +
+        '</div>' +
+        '<div class="bd-hist-left ' + (left < 0 ? 'neg' : 'pos') + '">' + money(left, true) + '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  // ---- actions ----
+  function addPurchase() {
+    const whatEl = document.getElementById('bdWhat');
+    const amtEl = document.getElementById('bdAmt');
+    const what = whatEl.value.trim();
+    const amount = parseFloat(amtEl.value);
+    if (isNaN(amount) || amount === 0) { amtEl.focus(); return; }
+    if (!weeks[selKey] || !Array.isArray(weeks[selKey].entries)) weeks[selKey] = { entries: [] };
+    weeks[selKey].entries.push({
+      id: Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+      what: what || 'Purchase',
+      amount: Math.round(amount * 100) / 100,
+    });
+    weeks[selKey].updatedAt = Date.now();
+    saveWeeks();
+    whatEl.value = ''; amtEl.value = '';
+    render();
+    whatEl.focus();
+  }
+  document.getElementById('bdAdd').addEventListener('click', addPurchase);
+  document.getElementById('bdAmt').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addPurchase(); } });
+  document.getElementById('bdWhat').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('bdAmt').focus(); } });
+
+  document.getElementById('bdList').addEventListener('click', e => {
+    const btn = e.target.closest('.bd-row-del');
+    if (!btn) return;
+    const w = weeks[selKey];
+    if (!w) return;
+    w.entries = (w.entries || []).filter(x => x.id !== btn.dataset.id);
+    w.updatedAt = Date.now();
+    saveWeeks();
+    render();
+  });
+
+  document.getElementById('bdPrev').addEventListener('click', () => {
+    const d = dateOfKey(selKey); d.setDate(d.getDate() - 7); selKey = keyOf(d); render();
+  });
+  document.getElementById('bdNext').addEventListener('click', () => {
+    const d = dateOfKey(selKey); d.setDate(d.getDate() + 7); selKey = keyOf(d); render();
+  });
+
+  document.getElementById('bdHistList').addEventListener('click', e => {
+    const row = e.target.closest('.bd-hist-row');
+    if (!row) return;
+    selKey = row.dataset.key;
+    document.getElementById('bdHist').classList.remove('is-open');
+    document.getElementById('bdHistToggle').setAttribute('aria-expanded', 'false');
+    render();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  // History collapse toggle
+  const histEl = document.getElementById('bdHist');
+  document.getElementById('bdHistToggle').addEventListener('click', () => {
+    const open = histEl.classList.toggle('is-open');
+    document.getElementById('bdHistToggle').setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+
+  // Settings
+  document.getElementById('bdGear').addEventListener('click', () => {
+    document.getElementById('bdWeeklyInput').value = weeklyBudget();
+    document.getElementById('bdModal').classList.add('show');
+  });
+  document.getElementById('bdCancel').addEventListener('click', () => document.getElementById('bdModal').classList.remove('show'));
+  document.getElementById('bdModal').addEventListener('click', e => { if (e.target === document.getElementById('bdModal')) document.getElementById('bdModal').classList.remove('show'); });
+  document.getElementById('bdSave').addEventListener('click', () => {
+    const v = parseFloat(document.getElementById('bdWeeklyInput').value);
+    cfg.weekly = (!isNaN(v) && v > 0) ? v : DEFAULT_WEEKLY;
+    saveCfg();
+    document.getElementById('bdModal').classList.remove('show');
+    render();
+  });
+
+  // ---- cloud sync merge fns (per-week newest-wins, like the food tracker) ----
+  function mergeBudgetWeeks(local, remote) {
+    const out = {};
+    function take(obj) {
+      if (!obj || typeof obj !== 'object') return;
+      Object.keys(obj).forEach(k => {
+        const rec = obj[k]; if (!rec) return;
+        const ex = out[k];
+        if (!ex) { out[k] = rec; return; }
+        const eu = Number(ex.updatedAt) || 0, ru = Number(rec.updatedAt) || 0;
+        if (ru !== eu) { if (ru > eu) out[k] = rec; return; }
+        if ((rec.entries || []).length > (ex.entries || []).length) out[k] = rec;
+      });
+    }
+    take(local); take(remote);
+    return out;
+  }
+  function mergeBudgetConfig(local, remote) {
+    const lu = Number(local && local.updatedAt) || 0, ru = Number(remote && remote.updatedAt) || 0;
+    return ru > lu ? (remote || {}) : (local || remote || {});
+  }
+  window.__budgetMergeFns = { budget_weeks_v1: mergeBudgetWeeks, budget_config_v1: mergeBudgetConfig };
+  window.__budgetSyncApplied = function () { weeks = loadWeeks(); cfg = loadCfg(); render(); };
+
+  render();
+})();
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  if (typeof initCloudSync !== 'function') return;
+  initCloudSync({
+    appKey: 'budget',
+    syncedKeys: ['budget_weeks_v1', 'budget_config_v1'],
+    merge: window.__budgetMergeFns || {},
+    onApplied: function () {
+      if (typeof window.__budgetSyncApplied === 'function') window.__budgetSyncApplied();
+    }
+  });
+});
+</script>
+</body>
+</html>
