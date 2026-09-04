@@ -701,6 +701,58 @@ html, body {
     localStorage.setItem(HIST_KEY, JSON.stringify(hist));
   }
 
+  // Remove food from ANY day. Used by the AI assistant ("take the coffee off",
+  // "clear today"). Returns how many items were actually removed so the reply can
+  // be honest when nothing matched.
+  function findEntryIndex(arr, item) {
+    if (item && item.id) {
+      const byId = arr.findIndex(e => e && e.id === item.id);
+      if (byId !== -1) return byId;
+    }
+    const want = String((item && item.name) || '').trim().toLowerCase();
+    if (!want) return -1;
+    const exact = arr.findIndex(e => String(e.name || '').trim().toLowerCase() === want);
+    if (exact !== -1) return exact;
+    return arr.findIndex(e => {
+      const n = String(e.name || '').trim().toLowerCase();
+      return n && (n.indexOf(want) !== -1 || want.indexOf(n) !== -1);
+    });
+  }
+  function removeEntriesFromDate(dateStr, items, removeAll) {
+    const isToday = !dateStr || dateStr === todayStr();
+    let hist = null, rec = null, arr;
+    if (isToday) {
+      arr = log.entries || (log.entries = []);
+    } else {
+      try { hist = JSON.parse(localStorage.getItem(HIST_KEY)) || []; } catch { hist = []; }
+      rec = hist.find(h => h && h.date === dateStr);
+      if (!rec || !Array.isArray(rec.entries)) return 0;
+      arr = rec.entries;
+    }
+    let removed = 0;
+    if (removeAll) {
+      removed = arr.length;
+      arr.length = 0;
+    } else {
+      (items || []).forEach(it => {
+        const i = findEntryIndex(arr, it);
+        if (i !== -1) { arr.splice(i, 1); removed++; }
+      });
+    }
+    if (!removed) return 0;
+    if (isToday) {
+      saveLog(); // stamps updatedAt so mergeFoodLog propagates the delete, not a stale copy
+    } else {
+      // Keep the (now zeroed) record rather than dropping it — mergeFoodHistory unions
+      // by date, so a deleted record would simply be resurrected from another device.
+      rec.calories = arr.reduce((s, e) => s + (e.calories || 0), 0);
+      rec.protein  = arr.reduce((s, e) => s + (e.protein  || 0), 0);
+      rec.updatedAt = Date.now();
+      localStorage.setItem(HIST_KEY, JSON.stringify(hist));
+    }
+    return removed;
+  }
+
   // Merge functions for cloud sync — exposed so initCloudSync never blindly clobbers these.
   function mergeFoodHistory(local, remote) {
     const byDate = {};
@@ -1063,6 +1115,10 @@ html, body {
     input.disabled = true;
     sendBtn.disabled = true;
 
+    // Snapshot the history BEFORE adding this turn — the server appends the current
+    // message itself, and sending it twice produced two identical user turns.
+    const priorHistory = chatHistory.slice(-8);
+
     addMessage('user', text);
     chatHistory.push({ role: 'user', content: text });
     showTyping();
@@ -1075,7 +1131,7 @@ html, body {
           message: text,
           foodLog: log.entries,
           goals: { calories: goals.calories || 2000, protein: goals.protein || 150 },
-          history: chatHistory.slice(-8),
+          history: priorHistory,
           foodHistory: loadHistoryRaw().slice(-14), // includes each day's individual meals
           today: todayStr(),
         }),
@@ -1089,13 +1145,20 @@ html, body {
         return;
       }
 
+      let reply = data.reply || 'Got it!';
+
       if (data.entries && data.entries.length) {
         // data.date tells us which day to apply to (today's live log, or a past day).
         applyEntriesToDate(data.date, data.entries);
         render();
       }
 
-      const reply = data.reply || 'Got it!';
+      if (data.type === 'remove' || data.removeAll || (data.removals && data.removals.length)) {
+        const n = removeEntriesFromDate(data.date, data.removals || [], !!data.removeAll);
+        if (n) render();
+        else reply += "\n\n(Nothing matched in that day's log, so nothing was removed.)";
+      }
+
       addMessage('claude', reply);
       chatHistory.push({ role: 'assistant', content: reply });
 
@@ -1154,7 +1217,7 @@ html, body {
     const protGoal = goals.protein  || 150;
     const hi = name ? 'Hey ' + name + '! 👋' : 'Hey! 👋';
     addMessage('claude',
-      hi + " I'm your nutrition assistant. Tell me what you've eaten and I'll log the macros instantly — or ask me for food ideas, restaurant picks, or anything nutrition-related.\n\nYour goals today: " +
+      hi + " I'm your nutrition assistant. Tell me what you've eaten and I'll log the macros instantly — or tell me to take something off (\"remove the coffee\") if you logged it by mistake. You can also ask for food ideas, restaurant picks, or anything nutrition-related.\n\nYour goals today: " +
       calGoal.toLocaleString() + ' kcal · ' + protGoal + 'g protein.'
     );
   })();
