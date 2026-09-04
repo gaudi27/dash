@@ -1,5 +1,5 @@
 // =============================================================
-// Persistent bottom tab bar (Budget / Food / Fitness).
+// Persistent bottom tab bar (Budget / Food / Fluids / Fitness).
 // Meals is not a tab — it lives behind the utensils button in food.html's header.
 // Drop this on any page with:
 //     <script src="topbar.js" defer></script>
@@ -78,6 +78,9 @@ body.topbar-modal-open { overflow: hidden; touch-action: none; }
   <a href="food.html" class="bottombar-tab" data-page="food">
     <span class="bottombar-tab-icon">🍎</span><span>Food</span>
   </a>
+  <a href="fluids.html" class="bottombar-tab" data-page="fluids">
+    <span class="bottombar-tab-icon">💧</span><span>Fluids</span>
+  </a>
   <a href="gym.html" class="bottombar-tab" data-page="fitness">
     <span class="bottombar-tab-icon">💪</span><span>Fitness</span>
   </a>
@@ -89,6 +92,7 @@ body.topbar-modal-open { overflow: hidden; touch-action: none; }
   function currentPageKey() {
     const p = (window.location.pathname || '').toLowerCase();
     if (p.endsWith('budget.html')) return 'budget';
+    if (p.endsWith('fluids.html')) return 'fluids';
     if (p.endsWith('gym.html'))    return 'fitness';
     return 'food'; // food is the home/default page
   }
