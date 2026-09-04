@@ -313,6 +313,43 @@ html, body {
   font-family: var(--font); font-size: 13px; font-weight: 600; cursor: pointer;
 }
 
+/* ---- Meals modal (saved-meal rollup) ---- */
+.food-header-actions { display: flex; align-items: center; gap: 8px; }
+.meals-modal { max-width: 460px; display: flex; flex-direction: column; }
+.meals-modal-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  flex-shrink: 0;
+}
+.meals-modal-head h3 { margin: 0; }
+.meals-close { font-size: 21px; line-height: 1; padding: 0; }
+.meals-sub { font-size: 12px; color: var(--text-3); margin: 3px 0 14px; flex-shrink: 0; }
+.meals-search { margin-bottom: 12px; flex-shrink: 0; }
+.meals-list {
+  display: flex; flex-direction: column; gap: 8px;
+  overflow-y: auto; overscroll-behavior: contain;
+  flex: 1; min-height: 0; -webkit-overflow-scrolling: touch;
+}
+.meal-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border); border-radius: 12px;
+  padding: 11px 13px;
+  display: flex; align-items: center; gap: 12px;
+}
+.meal-main { flex: 1; min-width: 0; }
+.meal-name {
+  font-size: 13.5px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.meal-meta { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+.meal-macros { text-align: right; flex-shrink: 0; }
+.meal-cal { font-size: 13px; font-weight: 700; font-family: var(--font-mono); }
+.meal-cal span { font-size: 10px; font-weight: 600; color: var(--text-3); }
+.meal-prot { font-size: 11px; color: var(--good); margin-top: 2px; }
+.meals-empty {
+  display: none; text-align: center; padding: 34px 10px;
+  color: var(--text-3); font-size: 13px; line-height: 1.5;
+}
+
 /* ---- History / stats (collapsible) ---- */
 .hist-section {
   background: var(--bg-card);
@@ -445,12 +482,21 @@ html, body {
       <div class="food-title" id="foodTitle">Nutrition</div>
       <div class="food-date"  id="foodDate">—</div>
     </div>
-    <button class="food-gear" id="gearBtn" aria-label="Settings">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="3"/>
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-      </svg>
-    </button>
+    <div class="food-header-actions">
+      <button class="food-gear" id="mealsBtn" aria-label="Saved meals">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/>
+          <path d="M7 2v20"/>
+          <path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/>
+        </svg>
+      </button>
+      <button class="food-gear" id="gearBtn" aria-label="Settings">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+    </div>
   </div>
 
   <!-- Progress bars -->
@@ -579,6 +625,25 @@ html, body {
 </div>
 
 <!-- Settings modal -->
+<!-- Meals: every distinct item the tracker has logged, most recent first.
+     Uses .modal-bg/.modal as well so topbar.js gives it the shared mobile
+     full-screen + body-scroll-lock treatment. -->
+<div class="food-modal-bg modal-bg" id="mealsModal">
+  <div class="food-modal modal meals-modal">
+    <div class="meals-modal-head">
+      <h3>Meals</h3>
+      <button class="food-gear meals-close" id="mealsClose" aria-label="Close">&times;</button>
+    </div>
+    <div class="meals-sub" id="mealsSub">—</div>
+    <input class="food-modal-input meals-search" id="mealsSearch" type="search"
+           placeholder="Search your meals…" autocomplete="off">
+    <div class="meals-list" id="mealsList"></div>
+    <div class="meals-empty" id="mealsEmpty">
+      No meals yet.<br>Anything you log will show up here.
+    </div>
+  </div>
+</div>
+
 <div class="food-modal-bg" id="settingsModal">
   <div class="food-modal">
     <h3>Settings</h3>
@@ -1179,6 +1244,97 @@ html, body {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(e.target.value); }
   });
 
+  // ---- Meals ----
+  // Every distinct item the tracker has logged, rolled up by name. Derived
+  // entirely from the log + history we already hold, so there's nothing to
+  // fetch — sync.js has already merged in whatever other devices logged.
+  const MEAL_SKIP = new Set(['previously logged', 'full day total', 'unknown', '']);
+  const mealsModal = document.getElementById('mealsModal');
+  let mealsFilter = '';
+
+  function dayToTs(dateStr) {
+    if (!dateStr) return 0;
+    const [y, m, d] = String(dateStr).split('-').map(Number);
+    return new Date(y, (m || 1) - 1, d || 1, 12, 0, 0).getTime();
+  }
+  function buildMeals() {
+    const byName = {};
+    function take(e, ts) {
+      if (!e || !e.name) return;
+      const key = String(e.name).trim().toLowerCase();
+      if (MEAL_SKIP.has(key)) return;
+      const ex = byName[key];
+      if (!ex) {
+        byName[key] = { name: String(e.name).trim(), calories: +e.calories || 0, protein: +e.protein || 0, count: 1, last: ts };
+        return;
+      }
+      ex.count += 1;
+      // Most recent logging of a name wins for the displayed macros.
+      if (ts >= ex.last) {
+        ex.last = ts; ex.name = String(e.name).trim();
+        ex.calories = +e.calories || 0; ex.protein = +e.protein || 0;
+      }
+    }
+    (log.entries || []).forEach(e => take(e, e.time ? (Date.parse(e.time) || Date.now()) : Date.now()));
+    loadHistoryRaw().forEach(day => {
+      if (!day || !Array.isArray(day.entries)) return;
+      const ts = dayToTs(day.date);
+      day.entries.forEach(e => take(e, ts));
+    });
+    return Object.values(byName).sort((a, b) => b.last - a.last);
+  }
+  function fmtMealDate(ts) {
+    if (!ts) return '';
+    return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+  function renderMeals() {
+    const listEl  = document.getElementById('mealsList');
+    const emptyEl = document.getElementById('mealsEmpty');
+    const subEl   = document.getElementById('mealsSub');
+    const meals   = buildMeals();
+
+    subEl.textContent = meals.length
+      ? meals.length + ' meal' + (meals.length === 1 ? '' : 's') + ' saved by your tracker'
+      : 'No meals saved yet';
+
+    if (!meals.length) { listEl.innerHTML = ''; emptyEl.style.display = 'block'; return; }
+    emptyEl.style.display = 'none';
+
+    const f = mealsFilter.trim().toLowerCase();
+    const shown = f ? meals.filter(m => m.name.toLowerCase().indexOf(f) !== -1) : meals;
+    if (!shown.length) {
+      listEl.innerHTML = '<div class="meals-empty" style="display:block">No meals match “' + esc(mealsFilter) + '”.</div>';
+      return;
+    }
+
+    listEl.innerHTML = shown.map(m =>
+      '<div class="meal-card">' +
+        '<div class="meal-main">' +
+          '<div class="meal-name">' + esc(m.name) + '</div>' +
+          '<div class="meal-meta">logged ' + m.count + '× · last ' + fmtMealDate(m.last) + '</div>' +
+        '</div>' +
+        '<div class="meal-macros">' +
+          '<div class="meal-cal">' + Math.round(m.calories).toLocaleString() + ' <span>kcal</span></div>' +
+          '<div class="meal-prot">' + Math.round(m.protein) + 'g protein</div>' +
+        '</div>' +
+      '</div>'
+    ).join('');
+  }
+  function closeMeals() { mealsModal.classList.remove('show'); }
+
+  document.getElementById('mealsBtn').addEventListener('click', () => {
+    mealsFilter = '';
+    document.getElementById('mealsSearch').value = '';
+    renderMeals();
+    mealsModal.classList.add('show');
+  });
+  document.getElementById('mealsClose').addEventListener('click', closeMeals);
+  mealsModal.addEventListener('click', e => { if (e.target === mealsModal) closeMeals(); });
+  document.getElementById('mealsSearch').addEventListener('input', e => {
+    mealsFilter = e.target.value;
+    renderMeals();
+  });
+
   // ---- Settings ----
   document.getElementById('gearBtn').addEventListener('click', () => {
     document.getElementById('settingName').value = goals.name     || '';
@@ -1230,6 +1386,7 @@ html, body {
     log   = loadLog();
     goals = loadGoals();
     render();
+    if (mealsModal.classList.contains('show')) renderMeals();
   };
 
   // ---- Visible sync status (so we can diagnose cross-device issues) ----

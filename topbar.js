@@ -1,5 +1,6 @@
 // =============================================================
-// Persistent bottom tab bar (Food / Meals / Fitness).
+// Persistent bottom tab bar (Budget / Food / Fitness).
+// Meals is not a tab — it lives behind the utensils button in food.html's header.
 // Drop this on any page with:
 //     <script src="topbar.js" defer></script>
 // It self-injects the bottom nav + shared mobile gesture/modal locks.
@@ -77,9 +78,6 @@ body.topbar-modal-open { overflow: hidden; touch-action: none; }
   <a href="food.html" class="bottombar-tab" data-page="food">
     <span class="bottombar-tab-icon">🍎</span><span>Food</span>
   </a>
-  <a href="meals.html" class="bottombar-tab" data-page="meals">
-    <span class="bottombar-tab-icon">🍽️</span><span>Meals</span>
-  </a>
   <a href="gym.html" class="bottombar-tab" data-page="fitness">
     <span class="bottombar-tab-icon">💪</span><span>Fitness</span>
   </a>
@@ -91,7 +89,6 @@ body.topbar-modal-open { overflow: hidden; touch-action: none; }
   function currentPageKey() {
     const p = (window.location.pathname || '').toLowerCase();
     if (p.endsWith('budget.html')) return 'budget';
-    if (p.endsWith('meals.html'))  return 'meals';
     if (p.endsWith('gym.html'))    return 'fitness';
     return 'food'; // food is the home/default page
   }
