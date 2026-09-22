@@ -78,8 +78,8 @@ body.topbar-modal-open { overflow: hidden; touch-action: none; }
   <a href="food.html" class="bottombar-tab" data-page="food">
     <span class="bottombar-tab-icon">🍎</span><span>Food</span>
   </a>
-  <a href="fluids.html" class="bottombar-tab" data-page="fluids">
-    <span class="bottombar-tab-icon">💧</span><span>Fluids</span>
+  <a href="finance.html" class="bottombar-tab" data-page="finance">
+    <span class="bottombar-tab-icon">📈</span><span>Finance</span>
   </a>
   <a href="gym.html" class="bottombar-tab" data-page="fitness">
     <span class="bottombar-tab-icon">💪</span><span>Fitness</span>
@@ -92,7 +92,7 @@ body.topbar-modal-open { overflow: hidden; touch-action: none; }
   function currentPageKey() {
     const p = (window.location.pathname || '').toLowerCase();
     if (p.endsWith('budget.html')) return 'budget';
-    if (p.endsWith('fluids.html')) return 'fluids';
+    if (p.endsWith('finance.html')) return 'finance';
     if (p.endsWith('gym.html'))    return 'fitness';
     return 'food'; // food is the home/default page
   }

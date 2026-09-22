@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0b">
+<title>Finance</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="sync.js" defer></script>
+<script src="finance.js" defer></script>
+<script src="topbar.js" defer></script>
+<style>
+:root {
+  --bg: #0a0a0b;
+  --bg-card: #111113;
+  --text-1: #ffffff;
+  --text-2: rgba(255,255,255,0.6);
+  --text-3: rgba(255,255,255,0.4);
+  --text-4: rgba(255,255,255,0.18);
+  --border: rgba(255,255,255,0.06);
+  --border-strong: rgba(255,255,255,0.14);
+  --good: #6ee7b7;
+  --warn: #fbbf24;
+  --bad: #ff8a8a;
+  --accent: #c4b5fd;
+  --accent-2: #7dd3fc;
+  --font: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, #14141a 0%, #0a0a0b 60%);
+  color: var(--text-1);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+body {
+  padding-bottom: calc(68px + env(safe-area-inset-bottom));
+}
+.shell {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 0 16px 20px;
+}
+.finance-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: max(18px, env(safe-area-inset-top)) 0 12px;
+}
+.finance-title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.finance-sub {
+  font-size: 12px;
+  color: var(--text-3);
+  margin-top: 2px;
+}
+.finance-header-actions {
+  display: flex;
+  gap: 8px;
+}
+.finance-btn {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 9px 12px;
+  transition: transform 0.12s ease, background 0.15s ease;
+}
+.finance-btn:active { transform: scale(0.98); }
+.finance-btn.primary {
+  background: linear-gradient(180deg, #f5f5f5 0%, #dfe2e6 100%);
+  color: #0a0a0b;
+  border-color: rgba(255,255,255,0.2);
+}
+.finance-btn.secondary {
+  background: rgba(255,255,255,0.04);
+  color: var(--text-1);
+}
+.finance-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 18px 16px;
+  margin-bottom: 12px;
+}
+.finance-card.summary {
+  background: linear-gradient(180deg, rgba(124,58,237,0.12) 0%, rgba(17,17,19,1) 100%);
+}
+.finance-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 8px;
+}
+.finance-value {
+  font-size: clamp(30px, 6vw, 46px);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.finance-summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 16px;
+}
+.finance-mini {
+  background: rgba(255,255,255,0.025);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 13px;
+}
+.finance-mini-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-4);
+}
+.finance-mini-value {
+  margin-top: 6px;
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.finance-sync-status {
+  margin-top: 12px;
+  font-size: 11px;
+  color: var(--text-3);
+}
+.finance-section-head {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 12px;
+}
+.finance-account-list,
+.finance-asset-list {
+  display: grid;
+  gap: 10px;
+}
+.finance-account-row,
+.finance-asset-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 12px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.finance-account-name-wrap,
+.finance-asset-name-wrap {
+  min-width: 0;
+}
+.finance-account-name,
+.finance-asset-name {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.finance-account-meta {
+  margin-top: 2px;
+  font-size: 10px;
+  color: var(--text-3);
+  text-transform: capitalize;
+}
+.finance-account-balance-wrap,
+.finance-asset-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+.finance-account-balance {
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.finance-account-balance.connected {
+  color: var(--good);
+}
+.finance-account-status {
+  font-size: 10px;
+  color: var(--text-3);
+}
+.finance-asset-value {
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.finance-remove-item {
+  appearance: none;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.04);
+  color: var(--text-2);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+}
+.finance-empty {
+  padding: 12px 6px 4px;
+  color: var(--text-3);
+  font-style: italic;
+  font-size: 13px;
+}
+.finance-asset-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(90px, 0.8fr) auto;
+  gap: 8px;
+  margin-top: 14px;
+}
+.finance-input {
+  width: 100%;
+  background: rgba(0,0,0,0.24);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-1);
+  font-family: var(--font);
+  font-size: 15px;
+  padding: 11px 12px;
+  outline: none;
+}
+.finance-input:focus {
+  border-color: rgba(124,58,237,0.5);
+}
+.finance-add-btn {
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #c4b5fd 0%, #7dd3fc 100%);
+  color: #0a0a0b;
+  font-family: var(--font);
+  font-size: 16px;
+  font-weight: 700;
+  padding: 0 16px;
+  cursor: pointer;
+}
+@media (max-width: 480px) {
+  .shell { padding-left: 12px; padding-right: 12px; }
+  .finance-header { align-items: flex-start; }
+  .finance-header-actions { flex-wrap: wrap; }
+  .finance-summary-grid { grid-template-columns: 1fr; }
+  .finance-asset-form { grid-template-columns: 1fr; }
+  .finance-add-btn { height: 42px; }
+}
+</style>
+</head>
+<body>
+  <div class="shell">
+    <div class="finance-header">
+      <div>
+        <div class="finance-title">Finance</div>
+        <div class="finance-sub">Net worth overview</div>
+      </div>
+      <div class="finance-header-actions">
+        <button id="financeRefreshBtn" class="finance-btn secondary" type="button">Refresh</button>
+        <button id="financeConnectBtn" class="finance-btn primary" type="button">Connect</button>
+      </div>
+    </div>
+
+    <section class="finance-card summary">
+      <div class="finance-label">Net worth</div>
+      <div class="finance-value" id="financeNetworth">$0</div>
+      <div class="finance-summary-grid">
+        <div class="finance-mini">
+          <div class="finance-mini-label">Connected balance</div>
+          <div class="finance-mini-value" id="financeBalances">$0</div>
+        </div>
+        <div class="finance-mini">
+          <div class="finance-mini-label">Accounts</div>
+          <div class="finance-mini-value" id="financeConnected">0 / 3 connected</div>
+        </div>
+      </div>
+      <div class="finance-sync-status" id="financeSyncStatus">Last synced: Not synced</div>
+    </section>
+
+    <section class="finance-card">
+      <div class="finance-section-head">Linked accounts</div>
+      <div id="financeAccountsList" class="finance-account-list"></div>
+    </section>
+
+    <section class="finance-card">
+      <div class="finance-section-head">Net worth items</div>
+      <div id="financeAssetsList" class="finance-asset-list"></div>
+      <form id="financeAssetForm" class="finance-asset-form">
+        <input id="financeAssetName" class="finance-input" type="text" placeholder="Item name" aria-label="Item name">
+        <input id="financeAssetValue" class="finance-input" type="number" step="0.01" placeholder="Value" aria-label="Item value">
+        <button class="finance-add-btn" type="submit">Add</button>
+      </form>
+    </section>
+  </div>
+</body>
+</html>
