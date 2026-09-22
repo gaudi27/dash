@@ -78,7 +78,12 @@
     if (!accountsListEl) return;
     accountsListEl.innerHTML = '';
 
-    state.accounts.forEach((account) => {
+    const visibleAccounts = (state.accounts || []).filter((account) => {
+      const name = String(account.name || '').toLowerCase();
+      return !name.includes('western') && !name.includes('hysa');
+    });
+
+    visibleAccounts.forEach((account) => {
       const row = document.createElement('div');
       row.className = 'finance-account-row';
       row.innerHTML = `
