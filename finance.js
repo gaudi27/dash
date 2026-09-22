@@ -7,8 +7,8 @@
     accounts: [
       { id: 'bofa', name: 'Bank of America Debit', type: 'checking', balance: 0, connected: false, institution: 'Bank of America' },
       { id: 'fidelity', name: 'Fidelity Stock Portfolio', type: 'brokerage', balance: 0, connected: false, institution: 'Fidelity' },
-      { id: 'western', name: 'Western Bank HYSA', type: 'savings', balance: 0, connected: false, institution: 'Western Bank' },
     ],
+    hysa: 0,
     customAssets: [
       { id: crypto.randomUUID(), name: 'Car', value: 0 },
       { id: crypto.randomUUID(), name: 'PC', value: 0 },
@@ -25,6 +25,8 @@
   const addAssetForm = document.getElementById('financeAssetForm');
   const addAssetName = document.getElementById('financeAssetName');
   const addAssetValue = document.getElementById('financeAssetValue');
+  const hysaValueEl = document.getElementById('financeHysaValue');
+  const hysaSaveBtn = document.getElementById('financeHysaSave');
   const connectBtn = document.getElementById('financeConnectBtn');
   const refreshBtn = document.getElementById('financeRefreshBtn');
   const syncStatusEl = document.getElementById('financeSyncStatus');
@@ -38,6 +40,7 @@
         ...structuredClone(defaultState),
         ...parsed,
         accounts: Array.isArray(parsed.accounts) && parsed.accounts.length ? parsed.accounts : structuredClone(defaultState.accounts),
+        hysa: Number(parsed.hysa) || 0,
         customAssets: Array.isArray(parsed.customAssets) && parsed.customAssets.length ? parsed.customAssets : structuredClone(defaultState.customAssets),
         customLiabilities: Array.isArray(parsed.customLiabilities) ? parsed.customLiabilities : [],
       };
@@ -120,12 +123,13 @@
 
   function renderSummary(state) {
     const accountsTotal = sumAccounts(state);
+    const hysaTotal = Number(state.hysa) || 0;
     const customAssetsTotal = sumCustomAssets(state);
     const total = totalNetworth(state);
     const connected = state.accounts.filter((account) => account.connected).length;
 
     if (balancesEl) {
-      balancesEl.textContent = formatMoney(accountsTotal + customAssetsTotal);
+      balancesEl.textContent = formatMoney(accountsTotal + hysaTotal + customAssetsTotal);
     }
     if (networthEl) {
       networthEl.textContent = formatMoney(total);
@@ -137,6 +141,13 @@
       const lastSync = state.lastSync ? new Date(state.lastSync).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : 'Not synced';
       syncStatusEl.textContent = `Last synced: ${lastSync}`;
     }
+    if (hysaValueEl) {
+      hysaValueEl.value = Number(state.hysa || 0);
+    }
+  }
+
+  function totalNetworth(state) {
+    return sumAccounts(state) + (Number(state.hysa) || 0) + sumCustomAssets(state);
   }
 
   function render(state) {
@@ -272,6 +283,15 @@
 
     if (refreshBtn) {
       refreshBtn.addEventListener('click', refreshPlaidBalances);
+    }
+
+    if (hysaSaveBtn && hysaValueEl) {
+      hysaSaveBtn.addEventListener('click', () => {
+        const amount = Number(hysaValueEl.value || 0);
+        const state = loadState();
+        state.hysa = Number.isNaN(amount) ? 0 : amount;
+        updateStateAndRender(state);
+      });
     }
 
     if (addAssetForm) {

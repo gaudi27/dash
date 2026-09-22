@@ -225,6 +225,26 @@ body {
   font-style: italic;
   font-size: 13px;
 }
+.finance-hysa-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.finance-hysa-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.finance-hysa-input {
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.finance-hysa-actions {
+  margin-top: 12px;
+}
 .finance-asset-form {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(90px, 0.8fr) auto;
@@ -298,6 +318,17 @@ body {
     <section class="finance-card">
       <div class="finance-section-head">Linked accounts</div>
       <div id="financeAccountsList" class="finance-account-list"></div>
+    </section>
+
+    <section class="finance-card">
+      <div class="finance-section-head">HYSA</div>
+      <div class="finance-hysa-row">
+        <label for="financeHysaValue" class="finance-hysa-label">Manual cash balance</label>
+        <input id="financeHysaValue" class="finance-input finance-hysa-input" type="number" step="0.01" placeholder="0" aria-label="HYSA amount">
+      </div>
+      <div class="finance-hysa-actions">
+        <button id="financeHysaSave" class="finance-btn primary" type="button">Save</button>
+      </div>
     </section>
 
     <section class="finance-card">
