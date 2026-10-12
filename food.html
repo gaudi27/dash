@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#101412">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Forge">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="forge-icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="forge-icon.svg">
@@ -533,6 +534,7 @@ html, body { background: radial-gradient(circle at 82% 0, #28372e 0, transparent
 .chat-msg.claude .chat-bubble { background: rgba(140,184,201,.08); border-color: rgba(140,184,201,.18); border-bottom-left-radius: 3px; }
 .chat-msg.user .chat-bubble { background: rgba(255,255,255,.07); border-color: var(--border-strong); border-bottom-right-radius: 3px; }
 .food-input-bar { background: linear-gradient(180deg, rgba(13,17,16,.1), rgba(13,17,16,.96) 38%); padding-top: 18px; }
+.food-input-bar { bottom: calc(62px + env(safe-area-inset-bottom)); }
 .food-input-row { max-width: 820px; }
 .food-input { min-height: 48px; border: 1px solid var(--border-strong); border-radius: 8px; background: #151c19; font-size: 16px; }
 .food-send { width: 46px; height: 46px; border-radius: 8px; background: var(--green); color: #102016; }

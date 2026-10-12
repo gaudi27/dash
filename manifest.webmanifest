@@ -1,8 +1,11 @@
 {
   "name": "Forge Training Log",
   "short_name": "Forge",
-  "start_url": "gym.html",
+  "id": "./",
+  "start_url": "food.html",
+  "scope": "./",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "background_color": "#101412",
   "theme_color": "#101412",
   "description": "A focused personal training log.",
