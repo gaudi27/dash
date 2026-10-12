@@ -235,7 +235,7 @@ html, body { background: radial-gradient(circle at 82% 0, #28372e 0, transparent
 .bd-add-row { gap: 7px; }
 .bd-input { min-height: 45px; border-radius: 6px; border-color: var(--border-strong); background: #111613; font-size: 16px; }
 .bd-input-amt { width: 100px; }
-.bd-add-btn { width: 45px; height: 45px; padding: 0; border-radius: 6px; background: var(--green); color: #102016; }
+.bd-add-btn { min-width: 68px; height: 45px; padding: 0 11px; border-radius: 6px; background: var(--warn); color: #101412; font-family: Arial, sans-serif; font-size: 14px; font-weight: 700; letter-spacing: .02em; box-shadow: 0 5px 14px rgba(226,163,94,.24); }
 .bd-list-card { margin-bottom: 14px; }
 .bd-list-head { padding: 14px 17px 11px; border-bottom-color: var(--border); }
 .bd-list-count { color: var(--text-2); font: 12px var(--font-mono); }
@@ -300,7 +300,7 @@ html, body { background: radial-gradient(circle at 82% 0, #28372e 0, transparent
     <div class="bd-add-row">
       <input class="bd-input bd-input-what" id="bdWhat" type="text" placeholder="What did you buy?" autocomplete="off">
       <input class="bd-input bd-input-amt" id="bdAmt" type="number" inputmode="decimal" step="0.01" placeholder="$">
-      <button class="bd-add-btn" id="bdAdd" aria-label="Add">+</button>
+      <button class="bd-add-btn" id="bdAdd" aria-label="Add purchase">+ Add</button>
     </div>
   </div>
 
