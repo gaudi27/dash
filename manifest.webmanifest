@@ -1,0 +1,17 @@
+{
+  "name": "Forge Training Log",
+  "short_name": "Forge",
+  "start_url": "gym.html",
+  "display": "standalone",
+  "background_color": "#101412",
+  "theme_color": "#101412",
+  "description": "A focused personal training log.",
+  "icons": [
+    {
+      "src": "forge-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
