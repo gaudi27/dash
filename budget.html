@@ -191,6 +191,63 @@ html, body {
   .bd-input-amt { width: 84px; }
 }
 .bd-hist { display: none; }
+
+/* ---- Forge dashboard visual refresh ---- */
+:root {
+  --bg: #0d1110;
+  --bg-card: #151c19;
+  --text-1: #f3f1e9;
+  --text-2: #b1bab3;
+  --text-3: #7d8981;
+  --text-4: #536059;
+  --border: rgba(168,213,173,0.12);
+  --border-strong: rgba(168,213,173,0.26);
+  --good: #a8d5ad;
+  --warn: #e2a35e;
+  --bad: #e5796d;
+  --accent: #8cb8c9;
+  --font: Arial, sans-serif;
+  --font-mono: 'DM Mono', ui-monospace, Consolas, monospace;
+}
+html, body { background: radial-gradient(circle at 82% 0, #28372e 0, transparent 34%), radial-gradient(circle at 0 55%, #17221e 0, transparent 30%), var(--bg); }
+.shell { max-width: 820px; padding-bottom: calc(150px + env(safe-area-inset-bottom)); }
+.bd-header { padding-top: max(24px, env(safe-area-inset-top)); padding-bottom: 22px; }
+.bd-title { font: 600 32px/.95 'Arial Narrow', Arial, sans-serif; letter-spacing: .025em; text-transform: uppercase; }
+.bd-sub { color: var(--text-3); font: 11px var(--font-mono); letter-spacing: .05em; text-transform: uppercase; margin-top: 7px; }
+.bd-gear { width: 40px; height: 40px; border-radius: 7px; background: rgba(21,28,25,.9); border-color: var(--border); }
+.bd-weeknav { padding: 9px; margin-bottom: 14px; border: 1px solid var(--border); border-radius: 9px; background: rgba(21,28,25,.76); }
+.bd-week-btn { width: 40px; height: 40px; border-radius: 7px; border-color: var(--border); background: var(--bg-card); }
+.bd-week-range { font: 600 16px var(--font-mono); letter-spacing: -.02em; }
+.bd-week-tag { color: var(--good); font: 600 10px var(--font-mono); letter-spacing: .14em; }
+.bd-card { position: relative; overflow: hidden; padding: 21px; margin-bottom: 14px; border-radius: 9px; border-color: var(--border); background: linear-gradient(145deg, rgba(33,48,41,.88), rgba(21,28,25,.97)); box-shadow: 0 16px 38px rgba(0,0,0,.2); }
+.bd-card::before { content: ''; position: absolute; inset: 0 0 auto; height: 2px; background: var(--good); }
+.bd-remaining-label, .bd-stat-label, .bd-list-title, .bd-add-eyebrow { color: var(--text-3); font: 600 10px var(--font-mono); letter-spacing: .14em; }
+.bd-remaining-num { font: 600 48px/1 'Arial Narrow', Arial, sans-serif; letter-spacing: .01em; }
+.bd-remaining-of { color: var(--text-2); font: 12px var(--font-mono); }
+.bd-bar-bg { height: 6px; margin-top: 14px; border-radius: 2px; background: rgba(0,0,0,.3); }
+.bd-bar-fill { border-radius: 2px; }
+.bd-stats { gap: 8px; margin-top: 18px; }
+.bd-stat { padding: 13px 14px; border-radius: 6px; border-color: var(--border); background: rgba(0,0,0,.14); }
+.bd-stat-val { font: 600 22px 'Arial Narrow', Arial, sans-serif; }
+.bd-stat-sub { color: var(--text-3); font: 10px var(--font-mono); }
+.bd-add-card, .bd-list-card { border-radius: 9px; border-color: var(--border); background: rgba(21,28,25,.9); box-shadow: 0 14px 34px rgba(0,0,0,.15); }
+.bd-add-card { padding: 16px 17px; margin-bottom: 14px; }
+.bd-add-row { gap: 7px; }
+.bd-input { min-height: 45px; border-radius: 6px; border-color: var(--border-strong); background: #111613; font-size: 16px; }
+.bd-input-amt { width: 100px; }
+.bd-add-btn { width: 45px; height: 45px; padding: 0; border-radius: 6px; background: var(--green); color: #102016; }
+.bd-list-card { margin-bottom: 14px; }
+.bd-list-head { padding: 14px 17px 11px; border-bottom-color: var(--border); }
+.bd-list-count { color: var(--text-2); font: 12px var(--font-mono); }
+.bd-row { padding: 13px 17px; border-top-color: rgba(168,213,173,.08); }
+.bd-row-what { font-weight: 600; }
+.bd-row-amt { color: var(--text-1); font: 600 14px var(--font-mono); }
+.bd-row-del { color: var(--text-4); }
+.bd-empty { padding: 29px 17px; color: var(--text-3); }
+.bd-modal { border-radius: 9px; background: var(--bg-card); border-color: var(--border-strong); }
+.bd-modal-input { min-height: 45px; border-radius: 6px; font-size: 16px; }
+.bd-modal-save { border-radius: 6px; background: var(--green); }
+@media (min-width: 760px) { .shell { padding-left: 22px; padding-right: 22px; } }
 </style>
 </head>
 <body>
