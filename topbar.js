@@ -78,9 +78,6 @@ body.topbar-modal-open { overflow: hidden; touch-action: none; }
   <a href="food.html" class="bottombar-tab" data-page="food">
     <span class="bottombar-tab-icon">🍎</span><span>Food</span>
   </a>
-  <a href="finance.html" class="bottombar-tab" data-page="finance">
-    <span class="bottombar-tab-icon">📈</span><span>Finance</span>
-  </a>
   <a href="gym.html" class="bottombar-tab" data-page="fitness">
     <span class="bottombar-tab-icon">💪</span><span>Fitness</span>
   </a>

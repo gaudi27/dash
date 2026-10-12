@@ -190,6 +190,7 @@ html, body {
   .bd-remaining-num { font-size: 34px; }
   .bd-input-amt { width: 84px; }
 }
+.bd-hist { display: none; }
 </style>
 </head>
 <body>
@@ -206,22 +207,22 @@ html, body {
   </div>
 
   <div class="bd-weeknav">
-    <button class="bd-week-btn" id="bdPrev" aria-label="Previous week">
+    <button class="bd-week-btn" id="bdPrev" aria-label="Previous period">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
     </button>
     <div class="bd-week-label">
       <div class="bd-week-range" id="bdWeekRange">—</div>
       <div class="bd-week-tag" id="bdWeekTag"></div>
     </div>
-    <button class="bd-week-btn" id="bdNext" aria-label="Next week">
+    <button class="bd-week-btn" id="bdNext" aria-label="Next period">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
     </button>
   </div>
 
   <div class="bd-card">
-    <div class="bd-remaining-label">Remaining this week</div>
+    <div class="bd-remaining-label">Remaining this period</div>
     <div class="bd-remaining-num" id="bdRemaining">$0</div>
-    <div class="bd-remaining-of" id="bdRemainingOf">$0 of $250 spent</div>
+    <div class="bd-remaining-of" id="bdRemainingOf">$0 of $450 spent</div>
     <div class="bd-bar-bg"><div class="bd-bar-fill" id="bdBar" style="width:0%"></div></div>
     <div class="bd-stats">
       <div class="bd-stat">
@@ -251,7 +252,7 @@ html, body {
       <span class="bd-list-title">Purchases</span>
       <span class="bd-list-count" id="bdListCount">$0</span>
     </div>
-    <div id="bdEmpty" class="bd-empty">No purchases yet this week.</div>
+    <div id="bdEmpty" class="bd-empty">No purchases yet this period.</div>
     <div id="bdList"></div>
   </div>
 
@@ -259,7 +260,7 @@ html, body {
     <button class="bd-hist-toggle" id="bdHistToggle" type="button" aria-expanded="false">
       <span class="bd-hist-icon">📅</span>
       <span class="bd-hist-text">
-        <span class="bd-hist-title">Week history</span>
+        <span class="bd-hist-title">Period history</span>
         <span class="bd-hist-sub" id="bdHistSub">Tap to see past weeks</span>
       </span>
       <span class="bd-chevron"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
@@ -274,8 +275,8 @@ html, body {
 <div class="bd-modal-bg" id="bdModal">
   <div class="bd-modal">
     <h3>Budget settings</h3>
-    <label class="bd-modal-label">Weekly budget ($)</label>
-    <input class="bd-modal-input" id="bdWeeklyInput" type="number" inputmode="decimal" step="1" placeholder="250">
+    <label class="bd-modal-label">Two-week budget ($)</label>
+    <input class="bd-modal-input" id="bdWeeklyInput" type="number" inputmode="decimal" step="1" placeholder="450">
     <div class="bd-modal-actions">
       <button class="bd-modal-cancel" id="bdCancel">Cancel</button>
       <button class="bd-modal-save" id="bdSave">Save</button>
@@ -289,7 +290,8 @@ html, body {
 
   const WEEKS_KEY = 'budget_weeks_v1';
   const CFG_KEY   = 'budget_config_v1';
-  const DEFAULT_WEEKLY = 250;
+  const DEFAULT_WEEKLY = 450;
+  const ROLLOVER_START = new Date(2026, 9, 9);
 
   // ---- storage ----
   function loadWeeks() { try { return JSON.parse(localStorage.getItem(WEEKS_KEY)) || {}; } catch { return {}; } }
@@ -299,15 +301,27 @@ html, body {
 
   let weeks = loadWeeks();
   let cfg   = loadCfg();
+  if (cfg.weekly !== 450 || cfg.periodStart !== '2026-10-09') {
+    cfg.weekly = 450;
+    cfg.periodStart = '2026-10-09';
+    saveCfg();
+  }
 
   function weeklyBudget() { return Number(cfg.weekly) > 0 ? Number(cfg.weekly) : DEFAULT_WEEKLY; }
 
-  // ---- week helpers (Sunday-start weeks, matching the sheet) ----
-  function weekStart(d) { const x = new Date(d); x.setHours(0,0,0,0); x.setDate(x.getDate() - x.getDay()); return x; }
+  // ---- two-week helpers, anchored to Friday October 9, 2026 ----
+  function weekStart(d) {
+    const x = new Date(d); x.setHours(0,0,0,0);
+    const anchor = new Date(2026, 9, 9); anchor.setHours(0,0,0,0);
+    const days = Math.floor((x - anchor) / 86400000);
+    const result = new Date(anchor);
+    result.setDate(anchor.getDate() + Math.floor(days / 14) * 14);
+    return result;
+  }
   function keyOf(d) { const x = weekStart(d); return x.getFullYear() + '-' + String(x.getMonth()+1).padStart(2,'0') + '-' + String(x.getDate()).padStart(2,'0'); }
   function dateOfKey(k) { const [y,m,d] = k.split('-').map(Number); return new Date(y, m-1, d); }
   function rangeLabel(k) {
-    const a = dateOfKey(k); const b = new Date(a); b.setDate(b.getDate()+6);
+    const a = dateOfKey(k); const b = new Date(a); b.setDate(b.getDate()+13);
     const f = (dt, withYear) => dt.toLocaleDateString('en-US', Object.assign({ month:'short', day:'numeric' }, withYear ? { year:'numeric' } : {}));
     return f(a) + ' – ' + f(b);
   }
@@ -326,10 +340,11 @@ html, body {
     let earliest = null;
     Object.keys(weeks).forEach(k => { const d = dateOfKey(k); if (!earliest || d < earliest) earliest = d; });
     const cur = weekStart(new Date());
+    if (!earliest || earliest < ROLLOVER_START) earliest = new Date(ROLLOVER_START);
     if (!earliest || earliest >= cur) return 0;
     const wk = weeklyBudget();
     let sum = 0, it = new Date(earliest);
-    while (it < cur) { sum += wk - spentOf(keyOf(it)); it.setDate(it.getDate() + 7); }
+    while (it < cur) { sum += wk - spentOf(keyOf(it)); it.setDate(it.getDate() + 14); }
     return sum;
   }
 
@@ -350,10 +365,10 @@ html, body {
     const remaining = wk - spent;
     const entries = entriesOf(selKey);
 
-    document.getElementById('bdSub').textContent = 'Weekly budget ' + money(wk);
+    document.getElementById('bdSub').textContent = 'Two-week budget ' + money(wk);
     document.getElementById('bdWeekRange').textContent = rangeLabel(selKey);
     const tagEl = document.getElementById('bdWeekTag');
-    if (selKey === CUR_KEY) { tagEl.textContent = 'THIS WEEK'; tagEl.classList.remove('past'); }
+    if (selKey === CUR_KEY) { tagEl.textContent = 'THIS PERIOD'; tagEl.classList.remove('past'); }
     else if (selKey < CUR_KEY) { tagEl.textContent = 'PAST WEEK'; tagEl.classList.add('past'); }
     else { tagEl.textContent = 'UPCOMING'; tagEl.classList.add('past'); }
 
@@ -403,11 +418,11 @@ html, body {
     const sub = document.getElementById('bdHistSub');
     const listEl = document.getElementById('bdHistList');
     if (!keys.length) {
-      sub.textContent = 'No weeks tracked yet';
+      sub.textContent = 'No periods tracked yet';
       listEl.innerHTML = '<div class="bd-hist-empty">Add purchases and your weeks will show up here.</div>';
       return;
     }
-    sub.textContent = keys.length + ' week' + (keys.length === 1 ? '' : 's') + ' tracked · ' + money(rolloverSaved()) + ' saved';
+    sub.textContent = keys.length + ' period' + (keys.length === 1 ? '' : 's') + ' tracked · ' + money(rolloverSaved()) + ' saved';
     listEl.innerHTML = keys.map(k => {
       const spent = spentOf(k);
       const left = wk - spent;
@@ -456,10 +471,10 @@ html, body {
   });
 
   document.getElementById('bdPrev').addEventListener('click', () => {
-    const d = dateOfKey(selKey); d.setDate(d.getDate() - 7); selKey = keyOf(d); render();
+    const d = dateOfKey(selKey); d.setDate(d.getDate() - 14); selKey = keyOf(d); render();
   });
   document.getElementById('bdNext').addEventListener('click', () => {
-    const d = dateOfKey(selKey); d.setDate(d.getDate() + 7); selKey = keyOf(d); render();
+    const d = dateOfKey(selKey); d.setDate(d.getDate() + 14); selKey = keyOf(d); render();
   });
 
   document.getElementById('bdHistList').addEventListener('click', e => {
