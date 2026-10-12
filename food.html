@@ -636,6 +636,7 @@ html, body { background: radial-gradient(circle at 82% 0, #28372e 0, transparent
           <div class="hist-range-toggle">
             <button class="hist-range-btn active" data-range="7">Week</button>
             <button class="hist-range-btn" data-range="30">Month</button>
+            <button class="hist-range-btn" data-range="90">3 Months</button>
           </div>
         </div>
         <div class="hist-stats">
@@ -1002,7 +1003,7 @@ html, body { background: radial-gradient(circle at 82% 0, #28372e 0, transparent
   }
 
   // ---- History / trends ----
-  let histRange  = 7;          // 7 or 30 days
+  let histRange  = 7;          // 7, 30, or 90 days
   let histMetric = 'calories'; // 'calories' or 'protein'
 
   function loadHistoryRaw() {
@@ -1042,7 +1043,8 @@ html, body { background: radial-gradient(circle at 82% 0, #28372e 0, transparent
 
     // Average over logged days in window
     const withData = series.filter(s => s.has && (s.calories > 0 || s.protein > 0));
-    document.getElementById('histAvgLabel').textContent = histRange + '-day avg';
+    const rangeLabel = histRange === 90 ? '3-month avg' : histRange + '-day avg';
+    document.getElementById('histAvgLabel').textContent = rangeLabel;
     if (withData.length) {
       const avgCal  = Math.round(withData.reduce((s, x) => s + x.calories, 0) / withData.length);
       const avgProt = Math.round(withData.reduce((s, x) => s + x.protein,  0) / withData.length);
@@ -1070,7 +1072,7 @@ html, body { background: radial-gradient(circle at 82% 0, #28372e 0, transparent
         subEl.textContent = 'Yesterday: ' + yRec.calories.toLocaleString() + ' kcal · ' + yRec.protein + 'g protein';
       } else if (withData.length) {
         const a = Math.round(withData.reduce((s, x) => s + x.calories, 0) / withData.length);
-        subEl.textContent = histRange + '-day avg: ' + a.toLocaleString() + ' kcal/day';
+        subEl.textContent = (histRange === 90 ? '3-month avg' : histRange + '-day avg') + ': ' + a.toLocaleString() + ' kcal/day';
       } else {
         subEl.textContent = 'Tap to view your week & month';
       }
@@ -1481,6 +1483,19 @@ html, body { background: radial-gradient(circle at 82% 0, #28372e 0, transparent
   setInterval(refreshSyncStatus, 1000);
   refreshSyncStatus();
 })();
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  if (typeof initCloudSync !== 'function') return;
+  initCloudSync({
+    appKey: 'food',
+    syncedKeys: ['food_log_v1', 'food_history_v1'],
+    merge: window.__foodMergeFns || {},
+    onApplied: function () {
+      if (typeof window.__foodSyncApplied === 'function') window.__foodSyncApplied();
+    }
+  });
+});
 </script>
 </body>
 </html>
